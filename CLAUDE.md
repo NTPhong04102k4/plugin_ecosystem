@@ -32,4 +32,21 @@ the pack, never the skill.
 - `skillrunner validate` — check the manifest
 - `skillrunner init` — write a starter skill.json into a new project
 
+## Feature delivery workflow (`deliver-feature`)
+
+When the user gives a **Jira task code + problem description**, run the `deliver-feature` skill:
+
+1. Consult this file and **`docs/module-registry.md`** to locate the relevant module, its files, and routes.
+2. Produce a **plan + measurable goals** → present and STOP for the user's approval before coding.
+3. Implement code/components per the stack conventions and design system (reuse existing first).
+4. `check-diff` against conventions + run the linter; clean/refactor touched components (no behavior change).
+5. Update **`docs/module-registry.md`** for the module (Purpose / Files / Routes).
+6. **Verify** the change end to end.
+7. Propose the commit message **as text only** (no file dumps): `ref-<jira>: <type> - <desc>`, subject ≤150 chars.
+8. Commit **only after the user confirms**. **Do NOT push** — the user pushes themselves. No author trailer.
+
+### Module registry — `docs/module-registry.md`
+The map of "which module develops what, which files, and what routes". Read it to find where things
+live; update it after delivering a feature so future tasks can look up files/routes per module.
+
 Docs: `docs/skill-runner-design.md` (design), `docs/skill-taxonomy.md` (the unified skill pool).

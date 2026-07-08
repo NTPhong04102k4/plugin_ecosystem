@@ -18,6 +18,20 @@
       "Generated output must be deterministic: same input => same output.",
       "No new dependency without justification.",
       "Never overwrite a file the tool did not generate without explicit approval."
+    ],
+    "commit-format": [
+      "Message format: `ref-<jira-number>: <type> - <short description>` (e.g. `ref-1433: chore - add make help target`).",
+      "Use standard Conventional Commits types only: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert.",
+      "The `ref-<number>` is the Jira ticket for task tracking; ask the user for it (or derive it from the branch name) if unknown.",
+      "Subject line MUST NOT exceed 150 characters (hard limit); keep it concise — do not pad it.",
+      "Description is imperative; add an optional body for details, separated by a blank line.",
+      "Do NOT add a Co-Authored-By or any author trailer."
+    ],
+    "module-registry": [
+      "Each project keeps a module registry at `docs/module-registry.md`.",
+      "For every module, record: Purpose (what it develops), Files (key files + their role), Routes (route path -> screen/handler).",
+      "After delivering a feature, update the registry so future work can look up which files/routes belong to which module.",
+      "Keep entries stable and sorted; do not rewrite unrelated sections."
     ]
   },
 
@@ -62,16 +76,20 @@
     },
 
     "commit": {
-      "description": "Split the working changes into per-module commits with clear messages.",
-      "goal": "Reviewable, module-scoped commits — only after the user confirms.",
-      "appliesRules": ["working-policy"],
+      "description": "Split the working changes into per-module commits with Conventional Commit messages tagged by a Jira ref.",
+      "goal": "Reviewable, module-scoped commits in the `ref-<n>: <type> - ...` format — only after the user confirms.",
+      "appliesRules": ["working-policy", "commit-format"],
+      "inputs": ["The Jira ticket number(s) for the work (ask if unknown)"],
       "instructions": [
         "Run `git status` and `git diff` to understand what changed.",
+        "Determine the Jira ref: derive it from the branch name if possible, otherwise ask the user.",
         "Group changes by module/feature; propose one commit per group.",
-        "Draft short messages in the user's language.",
-        "Present the commit plan and STOP for confirmation before committing."
+        "Draft each message as `ref-<jira-number>: <type> - <short description>` (<=150 chars) using a valid Conventional Commit type.",
+        "Present ONLY the proposed commit message text(s) — do NOT dump file diffs. STOP for the user's confirmation.",
+        "Commit only after the user confirms. Do NOT push — the user pushes themselves.",
+        "Do not append any author/Co-Authored-By trailer."
       ],
-      "outputs": ["A confirmed commit plan, then the commits"]
+      "outputs": ["The proposed commit message text(s) for confirmation, then the commits (not pushed)"]
     },
 
     "refactor": {
@@ -113,6 +131,42 @@
         "Run the stack linter and include its results."
       ],
       "outputs": ["A violation report", "Linter results"]
+    },
+
+    "update-module-registry": {
+      "description": "Create or update the project's module registry (docs/module-registry.md).",
+      "goal": "Keep an accurate map of module -> purpose, files, and routes for future lookup.",
+      "appliesRules": ["working-policy", "module-registry"],
+      "inputs": ["The module that was touched and the files/routes added or changed"],
+      "instructions": [
+        "Read docs/module-registry.md (create it if missing).",
+        "Find or add the section for the touched module.",
+        "Record Purpose (what it develops), Files (key files + role), Routes (path -> screen/handler).",
+        "Keep entries sorted and stable; leave unrelated sections untouched.",
+        "Report which module sections changed."
+      ],
+      "outputs": ["Updated docs/module-registry.md", "A summary of what changed"]
+    },
+
+    // ---- Orchestration: the end-to-end feature delivery workflow ----
+
+    "deliver-feature": {
+      "description": "Deliver a Jira feature end to end: locate module -> plan -> goal -> code -> check -> clean -> verify -> commit.",
+      "goal": "A verified, convention-clean feature with the module registry updated and a confirmed commit (not pushed).",
+      "appliesRules": ["working-policy", "module-registry", "commit-format", "architecture", "conventions", "design-system", "lint"],
+      "inputs": ["The Jira task code", "The problem description"],
+      "instructions": [
+        "If the Jira code or problem description is missing, ask for it.",
+        "Consult CLAUDE.md and docs/module-registry.md to locate the relevant module, its files, and its routes.",
+        "Produce a plan and 2-4 measurable goals; present them and STOP for the user's approval before coding.",
+        "Implement the code/components per the stack conventions and design system; reuse existing components first.",
+        "Run check-diff against conventions and run the linter; clean/refactor the touched components without changing behavior.",
+        "Update docs/module-registry.md for the module (purpose / files / routes).",
+        "Verify the change end to end (drive the affected flow, not just build/lint).",
+        "Propose the commit message(s) as `ref-<jira>: <type> - <desc>` (<=150 chars) TEXT ONLY — no file dumps — and STOP for confirmation.",
+        "Commit only after the user confirms. Do NOT push — the user pushes themselves."
+      ],
+      "outputs": ["Implemented + verified feature", "Updated module registry", "A confirmed commit (not pushed)"]
     },
 
     // ---- Stack-parametrized skills: one intent, content from the pack ----
