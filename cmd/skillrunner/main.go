@@ -20,6 +20,7 @@ const usage = `skillrunner — portable skill dispatcher for Claude
 
 Usage:
   skillrunner detect                   Print the detected stack (pack) for this project
+  skillrunner status                   Show stack + whether the project profile/registry are cached
   skillrunner list                     List skills (auto-detects & merges the stack pack)
   skillrunner emit <skill>             Print marching orders for <skill> (for Claude to execute)
   skillrunner validate                 Check that the manifest is well-formed
@@ -85,6 +86,16 @@ func main() {
 			os.Exit(0)
 		}
 		fmt.Printf("Detected stack: %s (%s)\n", d.Stack, d.Reason)
+
+	case "status":
+		d := skill.Detect(detectDir)
+		if d.Stack == "" {
+			fmt.Printf("Stack:   unknown (%s)\n", d.Reason)
+		} else {
+			fmt.Printf("Stack:   %s (%s)\n", d.Stack, d.Reason)
+		}
+		reportCache(detectDir, "Profile", "docs/project-profile.md", "run `learn-project` to build it")
+		reportCache(detectDir, "Registry", "docs/module-registry.md", "will be created as features land")
 
 	case "list":
 		m, err := loadWithPack(file, detectDir, packDir, pack)
@@ -156,6 +167,15 @@ func parseInterleaved(fs *flag.FlagSet, args []string) []string {
 		args = args[1:]
 	}
 	return positionals
+}
+
+// reportCache prints whether a cached knowledge file exists, with a hint if not.
+func reportCache(dir, label, rel, hint string) {
+	if _, err := os.Stat(filepath.Join(dir, rel)); err == nil {
+		fmt.Printf("%-8s cached (%s) — reuse it, do not re-scan source\n", label+":", rel)
+	} else {
+		fmt.Printf("%-8s missing (%s) — %s\n", label+":", rel, hint)
+	}
 }
 
 func fatal(err error) {

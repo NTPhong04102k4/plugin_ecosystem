@@ -29,8 +29,19 @@ the pack, never the skill.
 - JSON allows `//` line comments.
 
 ### Other commands
+- `skillrunner status` — show the stack + whether `docs/project-profile.md` / `docs/module-registry.md` are cached
 - `skillrunner validate` — check the manifest
 - `skillrunner init` — write a starter skill.json into a new project
+
+## Project profile — learn once, reuse (`learn-project`)
+
+The first time you work in a project, run `skillrunner status`. If `docs/project-profile.md` is
+**missing**, run the `learn-project` skill: it deep-dives the project once (framework, language,
+architecture/layers, flows, config/variables, and a **catalog of reusable components with file paths**)
+and writes the profile. On later tasks the profile **exists** → reuse it and apply the cataloged
+components directly; do **not** re-scan the whole source. **Only rebuild it when the user explicitly
+asks to update** — never auto-refresh. Safety: confirm a specific file/symbol still exists before
+relying on the cached catalog.
 
 ## Feature delivery workflow (`deliver-feature`)
 

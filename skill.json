@@ -32,6 +32,13 @@
       "For every module, record: Purpose (what it develops), Files (key files + their role), Routes (route path -> screen/handler).",
       "After delivering a feature, update the registry so future work can look up which files/routes belong to which module.",
       "Keep entries stable and sorted; do not rewrite unrelated sections."
+    ],
+    "project-profile": [
+      "The project's learned knowledge lives in `docs/project-profile.md`: framework + language (with versions), architecture/layers and how they connect, key flows (data/auth/navigation), important config/variables/tokens, and a catalog of reusable components/widgets WITH file paths.",
+      "FIRST task in a project (profile missing): run `learn-project` to build it before implementing. Check with `skillrunner status`.",
+      "If the profile EXISTS: reuse it — apply the cataloged components/patterns directly; do NOT re-scan the whole source to rediscover them.",
+      "Rebuild the profile ONLY when the user explicitly asks to update it (re-run `learn-project`); never auto-refresh.",
+      "Safety: trust the profile for orientation, but cheaply confirm a specific file/symbol still exists before relying on it."
     ]
   },
 
@@ -133,6 +140,22 @@
       "outputs": ["A violation report", "Linter results"]
     },
 
+    "learn-project": {
+      "description": "Deep-dive a project ONCE and cache its architecture in docs/project-profile.md (reused later, refreshed only on explicit update).",
+      "goal": "A reusable profile: framework, language, architecture, flows, config, and a catalog of reusable components with paths.",
+      "appliesRules": ["working-policy", "project-profile", "architecture", "conventions", "design-system", "library-docs"],
+      "inputs": ["The project directory (stack is auto-detected)"],
+      "instructions": [
+        "Run `skillrunner status`: if docs/project-profile.md already exists, STOP unless the user explicitly asked to update it.",
+        "Detect the stack and load the matching pack rules for context.",
+        "Analyze the project: framework + language (with versions), architecture/layers and how they connect, key flows (data/auth/navigation), important config/env/variables/design tokens.",
+        "Catalog reusable components/widgets: name, file path, purpose, and how to use — so future tasks apply them without re-reading source.",
+        "Write docs/project-profile.md in a stable, structured format. Do NOT modify source code.",
+        "Summarize what was learned."
+      ],
+      "outputs": ["docs/project-profile.md", "A short summary of the project's architecture"]
+    },
+
     "update-module-registry": {
       "description": "Create or update the project's module registry (docs/module-registry.md).",
       "goal": "Keep an accurate map of module -> purpose, files, and routes for future lookup.",
@@ -153,11 +176,12 @@
     "deliver-feature": {
       "description": "Deliver a Jira feature end to end: locate module -> plan -> goal -> code -> check -> clean -> verify -> commit.",
       "goal": "A verified, convention-clean feature with the module registry updated and a confirmed commit (not pushed).",
-      "appliesRules": ["working-policy", "module-registry", "commit-format", "architecture", "conventions", "design-system", "lint"],
+      "appliesRules": ["working-policy", "project-profile", "module-registry", "commit-format", "architecture", "conventions", "design-system", "lint"],
       "inputs": ["The Jira task code", "The problem description"],
       "instructions": [
         "If the Jira code or problem description is missing, ask for it.",
-        "Consult CLAUDE.md and docs/module-registry.md to locate the relevant module, its files, and its routes.",
+        "Run `skillrunner status`. If docs/project-profile.md is missing, run `learn-project` first; otherwise reuse it — do not re-scan the whole source.",
+        "Consult CLAUDE.md, docs/project-profile.md, and docs/module-registry.md to locate the relevant module, its files, routes, and reusable components.",
         "Produce a plan and 2-4 measurable goals; present them and STOP for the user's approval before coding.",
         "Implement the code/components per the stack conventions and design system; reuse existing components first.",
         "Run check-diff against conventions and run the linter; clean/refactor the touched components without changing behavior.",
@@ -174,7 +198,7 @@
     "scaffold-data": {
       "description": "Build the data layer for an API call following the stack's architecture.",
       "goal": "Types/models + service/provider + wiring, per the pack's templates.",
-      "appliesRules": ["working-policy", "technical", "architecture", "conventions", "templates", "library-docs"],
+      "appliesRules": ["working-policy", "project-profile", "technical", "architecture", "conventions", "templates", "library-docs"],
       "inputs": ["Endpoint, method, request/response shape (ask if unknown)"],
       "instructions": [
         "Confirm the endpoint contract; ask for missing request/response shapes.",
@@ -189,7 +213,7 @@
     "scaffold-screen": {
       "description": "Scaffold a new screen/feature following the stack's architecture.",
       "goal": "A screen split into the pack's layers, wired into routing.",
-      "appliesRules": ["working-policy", "architecture", "conventions", "templates"],
+      "appliesRules": ["working-policy", "project-profile", "architecture", "conventions", "templates"],
       "inputs": ["Screen name, purpose, whether it is a list/detail/form"],
       "instructions": [
         "Pick the matching pack template (list / detail / form / dialog).",
@@ -203,7 +227,7 @@
     "build-ui": {
       "description": "Build or edit UI using the stack's design system and tokens.",
       "goal": "UI that reuses shared components and obeys design tokens.",
-      "appliesRules": ["working-policy", "conventions", "design-system"],
+      "appliesRules": ["working-policy", "project-profile", "conventions", "design-system"],
       "inputs": ["The UI to build/change and where it lives"],
       "instructions": [
         "Reuse existing shared components before creating new ones.",

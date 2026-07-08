@@ -18,10 +18,11 @@ Template for a new entry:
 ## cli (`cmd/skillrunner`)
 - **Purpose:** command-line entrypoint; parses args and dispatches subcommands.
 - **Files:**
-  - `cmd/skillrunner/main.go` — subcommand dispatch, flags, pack loading/merging.
+  - `cmd/skillrunner/main.go` — subcommand dispatch, flags, pack loading/merging, `reportCache`.
   - `cmd/skillrunner/starter.go` — embedded starter manifest for `init`.
 - **Routes (subcommands):**
   - `detect` -> `skill.Detect`
+  - `status` -> `skill.Detect` + `reportCache` (profile/registry cache state)
   - `list` -> `Manifest.List` (after pack merge)
   - `emit <skill>` -> `Manifest.Emit` (after pack merge)
   - `validate` -> `skill.Load` + `Manifest.Validate`
