@@ -1,0 +1,42 @@
+{
+  "stack": "swift",
+
+  // iOS native (Swift) pack. Composed from idiomatic modern iOS conventions
+  // (SwiftUI + MVVM, async/await, Codable).
+  "rules": {
+    "architecture": [
+      "MVVM with SwiftUI: View -> ViewModel (ObservableObject) -> Service/Repository -> data source.",
+      "Inject dependencies via initializers (or the Environment); keep Views free of networking.",
+      "Domain models separate from API DTOs; map at the service/repository boundary.",
+      "Use async/await for concurrency; @MainActor for anything touching UI state."
+    ],
+    "conventions": [
+      "Prefer value types (struct/enum); use Codable for models.",
+      "No force-unwraps or force-try in production; use guard for early return and optional binding.",
+      "Errors via throws / Result; represent view state with an enum (idle/loading/loaded/failed).",
+      "Explicit access control (private/internal/public); mark UI-updating members @MainActor.",
+      "Localize user-facing strings; do not hardcode copy."
+    ],
+    "lint": [
+      "Run SwiftLint and SwiftFormat; fix warnings in changed scope.",
+      "No compiler warnings in touched files; avoid retain cycles ([weak self] in escaping closures).",
+      "Add XCTest cases for ViewModel/service logic."
+    ],
+    "templates": [
+      "scaffold-data: Codable model + an async APIService (URLSession) + a Repository protocol/implementation.",
+      "scaffold-screen: SwiftUI View + ViewModel (ObservableObject with @Published state) + navigation wiring.",
+      "Follow the existing project/module organization; do not introduce a new pattern."
+    ],
+    "design-system": [
+      "Colors/fonts from the Asset catalog or Color/Font extensions — never hardcode hex values.",
+      "Reuse shared SwiftUI components; support Dynamic Type and light/dark appearance.",
+      "Use SF Symbols for iconography; respect safe areas.",
+      "Accessibility labels/traits on interactive elements."
+    ],
+    "library-docs": [
+      "Prefer first-party frameworks: SwiftUI, Swift Concurrency, URLSession, Combine (where already used).",
+      "Persistence: SwiftData or CoreData — match the repo.",
+      "If Alamofire/other third-party is present, follow its existing usage; do not add new deps casually."
+    ]
+  }
+}

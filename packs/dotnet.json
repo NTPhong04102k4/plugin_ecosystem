@@ -1,0 +1,42 @@
+{
+  "stack": "dotnet",
+
+  // ASP.NET Core backend pack. Composed from idiomatic .NET conventions.
+  // "design-system" is reinterpreted as API-contract conventions (no UI here).
+  "rules": {
+    "architecture": [
+      "Layered/Clean: Controllers (or Minimal API endpoints) -> Services -> Repositories -> EF Core DbContext.",
+      "Dependency injection via the built-in container; register services in Program.cs with correct lifetime.",
+      "Separate DTOs (request/response) from EF entities; map explicitly or via a mapper.",
+      "async all the way: I/O methods return Task/Task<T> and accept a CancellationToken."
+    ],
+    "conventions": [
+      "Enable nullable reference types; treat nullable warnings as errors.",
+      "Use records for immutable DTOs; use ActionResult<T> / Results.* for responses.",
+      "Validate input (DataAnnotations or FluentValidation); never trust request bodies.",
+      "Do not block on async (no .Result/.Wait()); propagate CancellationToken.",
+      "One responsibility per class; keep controllers thin — logic lives in services."
+    ],
+    "lint": [
+      "Run dotnet format; honor .editorconfig and enabled analyzers.",
+      "No compiler warnings in changed files; XML doc comments on public APIs.",
+      "Run dotnet test; keep unit tests for service logic."
+    ],
+    "templates": [
+      "scaffold-data: Entity + DbSet + request/response DTOs + Repository interface/implementation + Service method; add EF migration if the schema changes.",
+      "scaffold-screen (endpoint): Controller action or Minimal API endpoint with route attributes, request/response DTO, validation, and typed result.",
+      "Follow the existing project structure; do not introduce a new pattern."
+    ],
+    "design-system": [
+      "API contract: return RFC 7807 ProblemDetails for errors uniformly.",
+      "Follow REST conventions (verbs, status codes, plural resource routes).",
+      "Version the API; expose Swagger/OpenAPI as the contract source of truth.",
+      "Keep response DTOs stable; never leak EF entities directly."
+    ],
+    "library-docs": [
+      "EF Core for data access; migrations via dotnet ef.",
+      "Common: FluentValidation, AutoMapper/Mapster, Serilog, MediatR — match what the repo uses.",
+      "Configuration via IOptions<T>; secrets via user-secrets/environment, never hardcoded."
+    ]
+  }
+}

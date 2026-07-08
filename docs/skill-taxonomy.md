@@ -131,11 +131,15 @@ Luồng: `detect` → chọn pack → `emit <skill>` gộp **skill (chung) + rul
 ## 8. Lộ trình
 
 1. ✅ Khung skillrunner (skill chung + rules + emit) — đã có.
-2. ▶ Viết pack `react` + `flutter` (trích từ 2 project mẫu — nhanh nhất).
-3. Thêm `skillrunner detect` + tách `packs/<stack>.json`.
-4. Chuẩn hoá 4 skill core generic (`commit`, `spec-from-source`, `refactor`, `check-diff`).
-5. Nhân bản pack cho Go → ASP.NET → Kotlin → Swift → RN (dùng khung pack ở §4).
-6. Áp thử vào `Flutter_weather` (đang trống) để kiểm chứng "kéo vào là chạy, không tái cấu trúc".
+2. ✅ Pack `react` + `flutter` (trích từ 2 project mẫu).
+3. ✅ `skillrunner detect` + tách `packs/<stack>.json`.
+4. ✅ Skill core generic (`plan-feature`, `spec-from-source`, `commit`, `refactor`, `explain-lib`, `check-diff`).
+5. ✅ Pack `go`, `dotnet`, `kotlin`, `swift`, `rn` (soạn theo best-practice từng stack — chưa có project mẫu, cần tinh chỉnh khi áp thật).
+6. ▶ Áp thử vào `Flutter_weather` (đang trống) để kiểm chứng "kéo vào là chạy, không tái cấu trúc".
+7. ▶ Thêm `go test` cho `Detect`/`Emit` (đảm bảo output xác định).
+
+> Lưu ý: pack `go`/`dotnet` là **backend** — nhóm `design-system` được diễn giải thành "quy ước API contract"
+> (response envelope, status code, OpenAPI), không phải UI. Skill `build-ui` ít dùng cho hai stack này.
 
 ---
 

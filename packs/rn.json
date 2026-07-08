@@ -1,0 +1,42 @@
+{
+  "stack": "rn",
+
+  // React Native pack. Shares the React data-layer approach but with RN-specific
+  // UI, navigation, and platform conventions. Composed from idiomatic RN practice.
+  "rules": {
+    "architecture": [
+      "Screens -> hooks (logic) -> services (data); keep screen components presentational.",
+      "Navigation via React Navigation; define routes/params in a typed navigator.",
+      "Server state via react-query; app state via a light store (zustand/context) — not everything in Redux.",
+      "Platform-specific code in .ios.tsx / .android.tsx or via Platform.select."
+    ],
+    "conventions": [
+      "Functional components + hooks only; no class components.",
+      "Styles via StyleSheet.create — no inline style objects created in render.",
+      "Lists use FlatList/SectionList with keyExtractor (and getItemLayout when possible); never map into a ScrollView for long lists.",
+      "Handle safe areas (SafeAreaView / react-native-safe-area-context); avoid hardcoded status-bar insets.",
+      "TypeScript strict; define a Props type per component; no console.log in production."
+    ],
+    "lint": [
+      "Run ESLint (@react-native config) + Prettier; fix warnings in changed scope.",
+      "No unused styles/imports; avoid anonymous functions in render for hot paths.",
+      "Run tests (Jest/React Native Testing Library) for hooks/logic."
+    ],
+    "templates": [
+      "scaffold-data: types + api service + react-query hooks (same contract as the web React pack).",
+      "scaffold-screen: Screen component + logic hook + registration in the navigator with typed params.",
+      "Reuse existing shared components; mirror the app's folder structure."
+    ],
+    "design-system": [
+      "Use theme tokens (a theme provider or constants) — never hardcode colors/spacing.",
+      "Responsive sizing via useWindowDimensions/Dimensions; avoid fixed pixel layouts.",
+      "Reuse shared UI primitives; keep touch targets accessible (min 44pt) with accessibilityLabel.",
+      "Respect light/dark via useColorScheme."
+    ],
+    "library-docs": [
+      "Navigation: React Navigation (native-stack). Data: @tanstack/react-query.",
+      "Common: react-native-reanimated, react-native-gesture-handler, @react-native-async-storage/async-storage.",
+      "Follow the app's existing library choices; do not add native deps without justifying the linking cost."
+    ]
+  }
+}

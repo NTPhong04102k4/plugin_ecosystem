@@ -1,0 +1,42 @@
+{
+  "stack": "kotlin",
+
+  // Android native (Kotlin) pack. Composed from idiomatic modern Android
+  // conventions (MVVM + Clean, Coroutines/Flow, Jetpack Compose, Hilt).
+  "rules": {
+    "architecture": [
+      "MVVM + Clean layers: UI (Compose/View) -> ViewModel -> UseCase -> Repository -> data source.",
+      "Dependency injection with Hilt; scope dependencies correctly.",
+      "Expose UI state from the ViewModel as StateFlow; collect with lifecycle awareness.",
+      "Domain models separate from network DTOs and DB entities; map at the repository."
+    ],
+    "conventions": [
+      "All async via coroutines/Flow; never block the main thread; no GlobalScope — use viewModelScope.",
+      "Represent UI state with a sealed class/interface (Loading/Success/Error).",
+      "Immutable data classes; use when-expressions and Kotlin idioms (let/apply/require).",
+      "Propagate errors as Result or sealed state; do not swallow exceptions.",
+      "UI strings in resources (strings.xml), not hardcoded."
+    ],
+    "lint": [
+      "Run ktlint/detekt and Android Lint; fix issues in changed scope.",
+      "No !! non-null assertions in production paths; handle nullability explicitly.",
+      "Run unit tests (JUnit) for ViewModel/UseCase logic."
+    ],
+    "templates": [
+      "scaffold-data: Retrofit API interface + DTO (nullable-safe) + Repository interface/impl + mapper to domain model.",
+      "scaffold-screen: Composable screen + ViewModel exposing StateFlow<UiState> + navigation route registration.",
+      "Mirror the module structure the app already uses; do not invent a new one."
+    ],
+    "design-system": [
+      "Use Material 3 via Compose: MaterialTheme.colorScheme / typography / shapes — never hardcode colors.",
+      "Size with dp/sp; reuse shared composables before creating new ones.",
+      "Support light/dark theme and dynamic color where enabled.",
+      "Handle insets/safe areas; content descriptions for accessibility."
+    ],
+    "library-docs": [
+      "Networking: Retrofit + OkHttp + a JSON converter (Moshi/kotlinx.serialization) — match the repo.",
+      "Async: Coroutines + Flow. Local DB: Room. DI: Hilt.",
+      "UI: Jetpack Compose + Navigation Compose; follow existing usage, don't mix Views/Compose arbitrarily."
+    ]
+  }
+}

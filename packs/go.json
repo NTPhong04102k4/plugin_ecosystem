@@ -1,0 +1,45 @@
+{
+  "stack": "go",
+
+  // Go backend/service pack. No sample project — composed from idiomatic Go
+  // conventions. "design-system" is reinterpreted as API-contract conventions
+  // (Go backends produce a contract surface, not UI). Edit to match your repo.
+  "rules": {
+    "architecture": [
+      "Standard layout: cmd/<app> for entrypoints, internal/ for private packages, pkg/ for reusable libs.",
+      "Layering: handler/transport -> service (business logic) -> repository (data) -> store (db/http).",
+      "Dependency injection via constructor functions returning interfaces; wire in main.",
+      "context.Context is the first parameter of any call that does I/O or can be cancelled.",
+      "Accept interfaces, return structs; define interfaces in the consumer package, not the producer."
+    ],
+    "conventions": [
+      "Wrap errors with fmt.Errorf(\"...: %w\", err); never discard errors; do not panic in library code.",
+      "Return errors, do not log-and-continue; log once at the boundary.",
+      "Zero-value usable structs where possible; avoid unnecessary pointers.",
+      "Keep functions small; early-return on error instead of nesting.",
+      "Exported identifiers have doc comments starting with the identifier name."
+    ],
+    "lint": [
+      "Format with gofmt/goimports; code must be gofmt-clean.",
+      "Run go vet and golangci-lint; fix issues within the changed scope.",
+      "No unused variables/imports; no naked returns in long functions.",
+      "Run go test ./... ; prefer table-driven tests."
+    ],
+    "templates": [
+      "scaffold-data: define a model struct (json tags, pointers for nullable fields), a Repository interface + implementation, and mapping to/from the store.",
+      "scaffold-screen (HTTP endpoint): request/response DTO structs, a handler function, and route registration on the router; validate input, return typed errors.",
+      "Do not invent a new layout — mirror the existing cmd/internal structure."
+    ],
+    "design-system": [
+      "API contract: use one consistent JSON response envelope across endpoints.",
+      "Map errors to correct HTTP status codes; return a uniform error response shape.",
+      "Version the API in the path or header; keep request/response DTOs separate from domain models.",
+      "Document endpoints (OpenAPI/Swagger) as the source of truth."
+    ],
+    "library-docs": [
+      "Prefer the standard library first (net/http, encoding/json, database/sql, log/slog).",
+      "Router: chi / gin / echo — follow whichever the repo already uses; do not mix.",
+      "DB: sqlx or an existing ORM (gorm) — match the repo; logging via slog/zap consistently."
+    ]
+  }
+}
