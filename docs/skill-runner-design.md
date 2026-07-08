@@ -1,190 +1,190 @@
-# Skill Runner (Go) — Tài liệu thiết kế & quyết định
+# Skill Runner (Go) — Design & Decisions
 
-> Mục tiêu: Một **binary Go** duy nhất (build ra `bin`/`.exe`) đóng vai trò "bộ chạy skill".
-> Bạn thả binary + một **file manifest JSON khai báo** (không phải script chi tiết) vào bất kỳ project nào,
-> và Claude dùng nó để chạy skill — **không cần tái cấu trúc theo từng dự án**.
+> Goal: A single **Go binary** (builds to `bin`/`.exe`) that acts as a "skill runner".
+> You drop the binary + a **declarative JSON manifest** (not a detailed script) into any
+> project, and Claude uses it to run skills — **without restructuring per project**.
 
-Định dạng manifest đã chốt: **JSON** (`skill.json`).
-
----
-
-## 1. Khái niệm cốt lõi: "file yêu cầu" vs "file thực thi chi tiết"
-
-Đây là ý tưởng trung tâm bạn đưa ra. Phân biệt:
-
-| Loại | Là gì | Ví dụ |
-|------|-------|-------|
-| **File yêu cầu (declarative)** ✅ | Chỉ **khai báo** "muốn chạy gì", không chứa logic | `skill.json`: `{"skill": "build", "args": {...}}` |
-| **File thực thi chi tiết (imperative)** ❌ | Chứa toàn bộ logic thực thi, phải viết lại mỗi project | `build.sh`, `deploy.js` dài 200 dòng |
-
-**Nguyên tắc:** logic thực thi nằm **trong binary Go** (viết 1 lần, dùng mọi nơi).
-Mỗi project chỉ cần **1 file JSON nhỏ khai báo ý định**. Đổi project → chỉ đổi JSON, không đổi code.
-
-```
-┌─────────────────┐      đọc      ┌──────────────────┐
-│  skill.json     │ ────────────► │  skillrunner     │  (logic nằm ở đây, dùng chung)
-│  (khai báo)     │               │  (Go binary)     │
-└─────────────────┘               └──────────────────┘
-      ▲ mỗi project 1 file                 ▲ 1 binary cho tất cả project
-```
+Manifest format: **JSON** (`skill.json`).
 
 ---
 
-## 2. Ba phương án tích hợp — giao tiếp diễn ra như thế nào?
+## 1. Core concept: "request file" vs "detailed execution file"
 
-### Phương án A — CLI standalone ⭐ (đơn giản nhất)
+This is the central idea. The distinction:
 
-Claude gọi binary qua công cụ **Bash**, giao tiếp bằng **stdin/stdout/exit code**.
+| Type | What it is | Example |
+|------|------------|---------|
+| **Request file (declarative)** ✅ | Only **declares** "what to run", no logic | `skill.json`: `{"skill": "build", "args": {...}}` |
+| **Detailed execution file (imperative)** ❌ | Contains all execution logic, rewritten per project | `build.sh`, a 200-line `deploy.js` |
+
+**Principle:** the execution logic lives **inside the Go binary** (written once, used everywhere).
+Each project only needs **one small JSON file declaring intent**. Switch projects → change the
+JSON only, not the code.
 
 ```
-Claude ──(Bash tool)──► ./skillrunner run skill.json ──► stdout: kết quả JSON
-                                                     └──► exit 0 = OK, ≠0 = lỗi
+┌─────────────────┐    reads    ┌──────────────────┐
+│  skill.json     │ ──────────► │  skillrunner     │  (logic lives here, shared)
+│  (declarative)  │             │  (Go binary)     │
+└─────────────────┘             └──────────────────┘
+      ▲ one file per project              ▲ one binary for all projects
 ```
-
-**Luồng giao tiếp:**
-1. Claude chạy `./skillrunner run skill.json` (hoặc `skillrunner run --skill build`).
-2. Binary đọc `skill.json`, thực thi skill tương ứng.
-3. Binary in kết quả ra **stdout** (dạng JSON hoặc text) → Claude đọc lại.
-4. **Exit code** cho biết thành công/thất bại.
-
-**Ưu điểm:**
-- Không cần cấu hình gì thêm. Chỉ cần binary nằm trong project (hoặc trong PATH).
-- Portable tuyệt đối: copy binary + `skill.json` là chạy được ở mọi máy/mọi project.
-- Dễ debug: bạn tự chạy tay `./skillrunner run skill.json` được ngay.
-- Hợp nhất với ý "kéo file tool vào để chạy".
-
-**Nhược điểm:**
-- Claude phải "biết" gọi lệnh này (cần ghi trong `CLAUDE.md` hoặc bạn bảo nó).
-- Không tự động — Claude chỉ gọi khi được yêu cầu / khi đọc hướng dẫn.
-
-**Khi nào dùng:** Muốn nhanh, gọn, portable, ít ma thuật. **Khuyến nghị cho lần đầu.**
 
 ---
 
-### Phương án B — MCP server (tích hợp sâu)
+## 2. Three integration options — how does communication happen?
 
-Binary chạy như một **MCP server** (Model Context Protocol). Claude tự động **khám phá** các skill
-như những "tool" và gọi trực tiếp — không cần qua Bash.
+### Option A — Standalone CLI ⭐ (simplest)
+
+Claude calls the binary via the **Bash** tool, communicating through **stdin/stdout/exit code**.
 
 ```
-Claude ◄──(giao thức MCP qua stdio/JSON-RPC)──► skillrunner (đang chạy nền)
+Claude ──(Bash tool)──► ./skillrunner run skill.json ──► stdout: JSON result
+                                                     └──► exit 0 = OK, ≠0 = error
+```
+
+**Flow:**
+1. Claude runs `./skillrunner run skill.json` (or `skillrunner run --skill build`).
+2. The binary reads `skill.json` and executes the matching skill.
+3. The binary prints the result to **stdout** (JSON or text) → Claude reads it back.
+4. The **exit code** signals success/failure.
+
+**Pros:**
+- No extra configuration. The binary just sits in the project (or on PATH).
+- Fully portable: copy the binary + `skill.json` and it runs on any machine / any project.
+- Easy to debug: you can run `./skillrunner run skill.json` by hand.
+- Matches the "drag the tool file in to run" idea.
+
+**Cons:**
+- Claude must "know" to call this (needs it noted in `CLAUDE.md` or you tell it).
+- Not automatic — Claude only calls it on request / when it reads the instructions.
+
+**Use when:** you want something fast, compact, portable, low-magic. **Recommended first.**
+
+---
+
+### Option B — MCP server (deep integration)
+
+The binary runs as an **MCP server** (Model Context Protocol). Claude automatically **discovers**
+skills as "tools" and calls them directly — no Bash needed.
+
+```
+Claude ◄──(MCP protocol over stdio/JSON-RPC)──► skillrunner (running in background)
    │
-   ├─ khám phá: "server này có tool: build, deploy, test..."
-   └─ gọi: tool "build" với tham số {...} ──► server trả kết quả
+   ├─ discover: "this server has tools: build, deploy, test..."
+   └─ call: tool "build" with params {...} ──► server returns the result
 ```
 
-**Luồng giao tiếp:**
-1. Bạn đăng ký server 1 lần trong cấu hình MCP của Claude Code (`.mcp.json` / settings).
-2. Khi Claude khởi động, nó bắt tay (handshake) với server, hỏi "có tool gì?".
-3. Binary đọc `skill.json` → khai báo mỗi skill thành **một MCP tool** (có tên, mô tả, schema tham số).
-4. Claude thấy các tool này trong danh sách và **tự gọi khi phù hợp**, truyền tham số dạng JSON.
-5. Giao tiếp qua **JSON-RPC trên stdio** (hoặc HTTP/SSE) — chuẩn MCP, không phải stdout thô.
+**Flow:**
+1. You register the server once in Claude Code's MCP config (`.mcp.json` / settings).
+2. On startup Claude handshakes with the server and asks "what tools do you have?".
+3. The binary reads `skill.json` → declares each skill as an **MCP tool** (name, description, param schema).
+4. Claude sees these tools and **calls them automatically when appropriate**, passing JSON params.
+5. Communication is **JSON-RPC over stdio** (or HTTP/SSE) — standard MCP, not raw stdout.
 
-**Ưu điểm:**
-- Claude **tự động** biết skill nào tồn tại và tự gọi — không cần bạn nhắc.
-- Có schema tham số rõ ràng → Claude gọi đúng đối số.
-- Tích hợp "native", giống các MCP server khác (Figma, Atlassian...).
+**Pros:**
+- Claude **automatically** knows which skills exist and calls them — no need to remind it.
+- Clear parameter schemas → Claude passes the right arguments.
+- "Native" integration, like other MCP servers (Figma, Atlassian...).
 
-**Nhược điểm:**
-- Phức tạp hơn: phải implement giao thức MCP (handshake, list tools, call tool).
-- Cần đăng ký cấu hình 1 lần cho mỗi máy/mỗi nơi dùng (kém "kéo-thả" hơn).
-- Server chạy nền, khó debug hơn CLI.
+**Cons:**
+- More complex: you must implement the MCP protocol (handshake, list tools, call tool).
+- Requires one-time config per machine / location (less "drag-and-drop").
+- The server runs in the background, harder to debug than a CLI.
 
-**Khi nào dùng:** Muốn Claude tự động dùng skill mà không cần nhắc, chấp nhận setup 1 lần.
+**Use when:** you want Claude to use skills automatically without reminders, and accept a one-time setup.
 
 ---
 
-### Phương án C — Claude Code hook (tự động theo sự kiện)
+### Option C — Claude Code hook (event-driven, automatic)
 
-Binary chạy như một **hook**: Claude Code tự gọi nó **khi có sự kiện** (trước/sau khi dùng tool,
-khi bắt đầu/kết thúc phiên, khi submit prompt...). Cấu hình trong `settings.json`.
+The binary runs as a **hook**: Claude Code calls it **on events** (before/after using a tool,
+session start/end, on prompt submit...). Configured in `settings.json`.
 
 ```
-Sự kiện (vd: sau khi Edit file) ──► Claude Code chạy hook ──► skillrunner
-                                                              │ đọc stdin (JSON sự kiện)
-                                                              └► stdout/exit code: phản hồi
+Event (e.g. after editing a file) ──► Claude Code runs the hook ──► skillrunner
+                                                                    │ reads stdin (event JSON)
+                                                                    └► stdout/exit code: response
 ```
 
-**Luồng giao tiếp:**
-1. Bạn khai báo hook trong `settings.json`, trỏ tới binary + sự kiện muốn bắt (vd `PostToolUse`).
-2. Khi sự kiện xảy ra, Claude Code chạy binary và **đẩy dữ liệu sự kiện vào stdin** (JSON).
-3. Binary xử lý (vd: chạy skill "format" sau mỗi lần sửa file), trả kết quả qua stdout/exit code.
-4. Exit code / output có thể **chặn hoặc cho phép** hành động, hoặc chèn phản hồi cho Claude.
+**Flow:**
+1. You declare the hook in `settings.json`, pointing at the binary + the event to catch (e.g. `PostToolUse`).
+2. When the event fires, Claude Code runs the binary and **feeds the event data via stdin** (JSON).
+3. The binary handles it (e.g. run the "format" skill after each file edit), returning via stdout/exit code.
+4. The exit code / output can **block or allow** the action, or inject feedback for Claude.
 
-**Ưu điểm:**
-- **Tự động hoàn toàn** — không ai phải gọi, cứ đúng sự kiện là chạy (vd auto-format, auto-test).
-- Tốt cho các quy tắc "mỗi khi X thì làm Y".
+**Pros:**
+- **Fully automatic** — no one has to call it; it fires on the right event (e.g. auto-format, auto-test).
+- Great for "whenever X, do Y" rules.
 
-**Nhược điểm:**
-- Không phải để "chạy skill theo yêu cầu" — nó thiên về phản ứng sự kiện.
-- Cấu hình gắn với Claude Code cụ thể, kém portable.
-- Dễ gây phiền nếu bắt sai sự kiện (chạy quá nhiều lần).
+**Cons:**
+- Not meant for "run a skill on request" — it is reactive to events.
+- Config is tied to a specific Claude Code install, less portable.
+- Can be annoying if it catches the wrong event (runs too often).
 
-**Khi nào dùng:** Muốn tự động hoá theo sự kiện (format, lint, test tự chạy), không phải gọi thủ công.
+**Use when:** you want event-driven automation (auto format/lint/test), not manual invocation.
 
 ---
 
-## 3. So sánh nhanh
+## 3. Quick comparison
 
-| Tiêu chí | A. CLI | B. MCP server | C. Hook |
-|---------|--------|---------------|---------|
-| Độ phức tạp code | Thấp | Cao | Trung bình |
-| Cấu hình mỗi project | Không (chỉ cần file) | 1 lần / máy | 1 lần / máy |
-| Claude tự động dùng | Không (cần nhắc) | **Có** | **Có** (theo sự kiện) |
-| Portable ("kéo-thả") | **Cao nhất** | Trung bình | Thấp |
-| Dễ debug tay | **Cao nhất** | Thấp | Trung bình |
-| Giao thức | stdout + exit code | JSON-RPC (MCP) | stdin JSON + exit code |
-| Hợp mục tiêu của bạn | ✅✅✅ | ✅✅ | ✅ |
+| Criterion | A. CLI | B. MCP server | C. Hook |
+|-----------|--------|---------------|---------|
+| Code complexity | Low | High | Medium |
+| Config per project | None (just the file) | Once / machine | Once / machine |
+| Claude uses it automatically | No (needs a nudge) | **Yes** | **Yes** (on events) |
+| Portability ("drag-and-drop") | **Highest** | Medium | Low |
+| Easy to debug by hand | **Highest** | Low | Medium |
+| Protocol | stdout + exit code | JSON-RPC (MCP) | stdin JSON + exit code |
+| Fit for your goal | ✅✅✅ | ✅✅ | ✅ |
 
-**Gợi ý:** Bắt đầu với **A (CLI)** vì đúng nhất với ý "kéo binary + file JSON vào là chạy, không tái cấu trúc".
-Sau này có thể **nâng cấp cùng 1 binary lên B (MCP)** — chỉ thêm một lệnh con `skillrunner mcp`,
-dùng chung logic đọc `skill.json`. Kiến trúc bên dưới thiết kế để đi được cả hai.
+**Recommendation:** start with **A (CLI)** — it best matches "drop the binary + JSON file in and it
+runs, no restructuring". Later you can **upgrade the same binary to B (MCP)** — just add a `skillrunner
+mcp` subcommand that reuses the `skill.json` loading logic. The architecture below is built to support both.
 
 ---
 
-## 4. "Skill" là gì? — Giải thích 3 lựa chọn loại skill
+## 4. What is a "skill"? — the three options explained
 
-Đây là câu hỏi bạn muốn tôi giải thích để chọn. "Skill" = đơn vị công việc mà binary chạy.
-Có 3 cách hiểu:
+"Skill" = the unit of work the binary runs. Three interpretations:
 
-### Lựa chọn 1 — Lệnh/script khai báo trong manifest ⭐
+### Option 1 — Commands/scripts declared in the manifest ⭐
 
-Manifest JSON khai báo các **bước** (chuỗi lệnh shell / script) để binary thực thi tuần tự.
+The JSON manifest declares **steps** (a sequence of shell commands / scripts) for the binary to run.
 
 ```jsonc
 // skill.json
 {
   "skills": {
     "build": {
-      "description": "Build project",
+      "description": "Build the project",
       "steps": ["npm install", "npm run build"]
     },
     "deploy": {
-      "description": "Deploy lên staging",
+      "description": "Deploy to staging",
       "steps": ["npm run build", "./scripts/upload.sh staging"]
     }
   }
 }
 ```
 
-- **Bản chất:** binary là một "task runner" khai báo (giống Make/npm scripts nhưng portable, 1 binary).
-- **Ưu:** cực kỳ linh hoạt, mỗi project chỉ khác nhau ở JSON. Không cần viết code Go mới cho skill mới.
-- **Nhược:** vẫn phụ thuộc shell command của môi trường (npm, bash...). Logic vẫn là "lệnh", chỉ là được khai báo gọn.
-- **Đúng nhất với ý bạn:** "file yêu cầu thực thi, không phải file thực thi chi tiết".
+- **Essence:** the binary is a declarative task runner (like Make/npm scripts but portable, one binary).
+- **Pros:** extremely flexible; each project differs only in JSON. No new Go code for a new skill.
+- **Cons:** still depends on the environment's shell commands (npm, bash...). Logic is still "commands", just declared compactly.
+- **Best fit for your idea:** "request files, not detailed execution files".
 
-### Lựa chọn 2 — Claude Code SKILL.md
+### Option 2 — Claude Code SKILL.md
 
-Binary đọc và chạy các skill theo **chuẩn `SKILL.md`** của Claude Code (file markdown + frontmatter mô tả skill).
+The binary reads and runs skills in Claude Code's **`SKILL.md`** format (a markdown file + frontmatter).
 
-- **Bản chất:** binary trở thành "trình chạy" cho hệ skill sẵn có của Claude Code.
-- **Ưu:** tái dùng được các skill đã viết theo chuẩn Claude Code; thống nhất hệ sinh thái.
-- **Nhược:** `SKILL.md` vốn là **hướng dẫn cho model đọc**, không phải chương trình để binary "chạy".
-  Binary chỉ có thể *nạp/định tuyến* chúng, chứ không tự "hiểu" như Claude. Ít giá trị nếu chạy độc lập.
-- **Khi nào chọn:** nếu bạn đã có nhiều `SKILL.md` và muốn 1 công cụ để quản lý/định tuyến chúng.
+- **Essence:** the binary becomes a "runner" for Claude Code's existing skill system.
+- **Pros:** reuse skills already written in the Claude Code format; unified ecosystem.
+- **Cons:** `SKILL.md` is **instructions for the model to read**, not a program to "run". The binary can
+  only *load/route* them, not "understand" them like Claude. Little value when run standalone.
+- **Choose when:** you already have many `SKILL.md` files and want one tool to manage/route them.
 
-### Lựa chọn 3 — Plugin binary/module riêng
+### Option 3 — Separate plugin binaries/modules
 
-Mỗi skill là một **plugin độc lập** (binary con, hoặc Go plugin `.so`) mà binary chính điều phối.
+Each skill is a **standalone plugin** (a child binary, or a Go plugin `.so`) orchestrated by the main binary.
 
 ```jsonc
 // skill.json
@@ -196,50 +196,45 @@ Mỗi skill là một **plugin độc lập** (binary con, hoặc Go plugin `.so
 }
 ```
 
-- **Bản chất:** binary chính là "orchestrator", mỗi skill là chương trình riêng.
-- **Ưu:** mạnh nhất, mỗi skill có thể viết bằng ngôn ngữ bất kỳ, cô lập tốt.
-- **Nhược:** nặng nhất — phải phân phối nhiều binary con, mất tính "1 file kéo-thả".
-- **Khi nào chọn:** hệ skill lớn, phức tạp, cần cô lập/độc lập từng skill.
+- **Essence:** the main binary is an "orchestrator"; each skill is its own program.
+- **Pros:** most powerful; each skill can be written in any language, well isolated.
+- **Cons:** heaviest — you must distribute many child binaries, losing the "single-file drag-and-drop".
+- **Choose when:** a large, complex skill set that needs isolated/independent skills.
 
-### Bảng chọn
+### Decision table
 
-| | 1. Lệnh khai báo | 2. SKILL.md | 3. Plugin riêng |
-|--|------------------|-------------|-----------------|
-| Portable "1 file" | ✅✅✅ | ✅✅ | ❌ |
-| Thêm skill mới không sửa code Go | ✅ | ✅ | ✅ |
-| Chạy độc lập (không cần Claude hiểu) | ✅ | ❌ | ✅ |
-| Phức tạp phân phối | Thấp | Thấp | Cao |
-| Hợp mục tiêu của bạn | ✅✅✅ | ✅ | ✅ |
+| | 1. Declared commands | 2. SKILL.md | 3. Separate plugins |
+|--|----------------------|-------------|---------------------|
+| Portable "single file" | ✅✅✅ | ✅✅ | ❌ |
+| New skill without Go code | ✅ | ✅ | ✅ |
+| Runs standalone (no Claude needed to understand) | ✅ | ❌ | ✅ |
+| Distribution complexity | Low | Low | High |
+| Fit for your goal | ✅✅✅ | ✅ | ✅ |
 
-**Gợi ý:** **Lựa chọn 1** (lệnh khai báo trong manifest) đúng nhất với mục tiêu:
-1 binary + 1 file JSON khai báo, đổi project chỉ đổi JSON, không tái cấu trúc.
+**Recommendation:** **Option 1** (declared commands in the manifest) best fits the goal:
+one binary + one JSON file, switching projects only changes JSON, no restructuring.
 
 ---
 
-## 5. Đề xuất tổng thể (để bạn duyệt)
+## 5. Overall proposal (for your approval)
 
-> **CLI standalone (A) + Skill kiểu lệnh khai báo (1) + manifest JSON.**
+> **Standalone CLI (A) + declared-command skills (1) + JSON manifest.**
 
-Kiến trúc dự kiến của binary:
+Intended binary architecture:
 
 ```
 skillrunner
-├── run <skill> [--file skill.json]   # chạy 1 skill theo manifest  (phương án A)
-├── list [--file skill.json]          # liệt kê skill có trong manifest
-├── validate [--file skill.json]      # kiểm tra manifest hợp lệ
-└── mcp                               # (nâng cấp sau) chạy như MCP server (phương án B)
+├── run <skill> [--file skill.json]   # run one skill per the manifest  (Option A)
+├── list [--file skill.json]          # list skills in the manifest
+├── validate [--file skill.json]      # check the manifest is valid
+└── mcp                               # (later) run as an MCP server (Option B)
 ```
 
-- Build đa nền tảng: `bin/skillrunner` (macOS/Linux) và `skillrunner.exe` (Windows) từ cùng mã nguồn Go.
-- Dùng **thư viện chuẩn Go** (`encoding/json`, `os/exec`) — không phụ thuộc ngoài, binary tĩnh, dễ mang đi.
-- Thiết kế tách lớp để sau này thêm `mcp` mà không phải viết lại phần đọc `skill.json`.
+- Cross-platform builds: `bin/skillrunner` (macOS/Linux) and `skillrunner.exe` (Windows) from the same Go source.
+- Uses only the **Go standard library** (`encoding/json`, `os/exec`) — no external deps, static binary, easy to ship.
+- Layered so `mcp` can be added later without rewriting the `skill.json` loading.
 
 ---
 
-## 6. Bạn cần quyết định
-
-- [ ] **Tích hợp:** A (CLI) / B (MCP) / C (Hook) — *đề xuất: A trước, chừa đường lên B*
-- [ ] **Loại skill:** 1 (lệnh khai báo) / 2 (SKILL.md) / 3 (plugin) — *đề xuất: 1*
-- [ ] Manifest: **JSON** ✅ (đã chốt)
-
-Chọn xong, tôi sẽ khởi tạo `go.mod`, viết mã nguồn và build ra binary + `skill.json` mẫu.
+> Note: the final implementation evolved beyond this initial proposal — see `docs/skill-taxonomy.md`
+> for the shipped model (shared skills + per-stack rule packs + `detect`).

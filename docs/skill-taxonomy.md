@@ -1,152 +1,154 @@
-# Taxonomy skill hợp nhất — bể skill trung tâm
+# Unified Skill Taxonomy — the central skill pool
 
-> Quyết sách: **chia skill theo MỤC ĐÍCH (verb), không theo stack.**
-> Mỗi verb là **1 skill duy nhất** (phần intent/các bước). Khác biệt giữa React, Flutter,
-> Kotlin, Swift, Go, React Native, ASP.NET nằm trong **rule pack riêng của từng stack**.
-> `skillrunner` phát hiện stack → gộp `skill (chung) + rule pack (đúng stack)` → `emit` mệnh lệnh.
+> Decision: **divide skills by PURPOSE (verb), not by stack.**
+> Each verb is a **single skill** (the intent/steps). Differences between React, Flutter,
+> Kotlin, Swift, Go, React Native, ASP.NET live in a **per-stack rule pack**.
+> `skillrunner` detects the stack → merges `skill (shared) + rule pack (stack)` → `emit`s the marching orders.
 
-Bằng chứng cho quyết sách: hai dự án khác stack (`app-hrm` Flutter/GetX, `ghm-hrm` React)
-**độc lập hội tụ về cùng một bộ verb**. Đó là cấu trúc thật của công việc, không phải trùng hợp.
+Evidence for this decision: two projects on different stacks (`app-hrm` Flutter/GetX, `ghm-hrm` React)
+**independently converged on the same set of verbs**. That is the real structure of the work, not a coincidence.
 
 ---
 
-## 1. Nguyên tắc: tách INTENT khỏi CONTENT
+## 1. Principle: separate INTENT from CONTENT
 
 ```
-SKILL (intent, verb)      →  giống nhau mọi stack   →  viết & bảo trì 1 lần
+SKILL (intent, verb)      →  same across every stack   →  written & maintained once
   scaffold-data, build-ui, refactor, ...
 
-RULE PACK (content)       →  khác theo stack        →  nơi bỏ công sức chính
+RULE PACK (content)       →  differs per stack          →  where the real effort goes
   convention, template, lint, design-tokens, library-docs
 ```
 
-Sai lầm cần tránh: `scaffold-data-react`, `scaffold-data-flutter`, ... → 7 stack × N skill =
-bùng nổ bảo trì. Đúng: `scaffold-data` (1 bản) + 7 rule pack.
+Mistake to avoid: `scaffold-data-react`, `scaffold-data-flutter`, ... → 7 stacks × N skills =
+maintenance explosion, and fixing one shared principle means editing 7 places. Correct:
+`scaffold-data` (one copy) + 7 rule packs.
 
 ---
 
-## 2. Skill CORE — generic 100%, viết một lần, dùng mọi stack
+## 2. CORE skills — 100% generic, written once, used on every stack
 
-Không gắn stack. Không cần rule pack (hoặc chỉ cần pack rất mỏng).
+Not tied to a stack. Need no rule pack (or only a very thin one).
 
-| Skill | Mục đích | Nguồn gốc |
-|-------|----------|-----------|
-| `plan-feature` | Yêu cầu → plan + goals cho user duyệt (không code) | working-policy + skillrunner |
-| `spec-from-source` | Jira/Confluence/Swagger → spec có cấu trúc trước khi code | app-hrm `atlassian-spec`, `swagger-import` |
-| `commit` | Chia commit theo module, trình bày, xác nhận trước khi commit | app-hrm `commit` |
-| `check-diff` | Review `git diff` theo convention → báo `file:line` + chạy lint | ghm `check-convention`, app `clean-code` |
-| `refactor` | Cải thiện trong phạm vi, KHÔNG đổi hành vi | cả hai `refactor`/`clean-component` |
-| `explain-lib` | Giải thích cách project THỰC SỰ dùng một lib (từ docs cong sẵn) | ghm `explain-lib` + `libraries/` |
-| `working-policy` | Kỷ luật: hỏi khi mơ hồ · file plan trước khi code · minimal change · verify bằng git | app `working-policy` |
+| Skill | Purpose | Origin |
+|-------|---------|--------|
+| `plan-feature` | Request → plan + goals for the user to decide (no code) | working-policy + skillrunner |
+| `spec-from-source` | Jira/Confluence/Swagger → structured spec before coding | app-hrm `atlassian-spec`, `swagger-import` |
+| `commit` | Split changes into per-module commits, present, confirm before committing | app-hrm `commit` |
+| `check-diff` | Review `git diff` against conventions → report `file:line` + run lint | ghm `check-convention`, app `clean-code` |
+| `refactor` | Improve within scope, do NOT change behavior | both `refactor`/`clean-component` |
+| `explain-lib` | Explain how the project ACTUALLY uses a library (from curated docs) | ghm `explain-lib` + `libraries/` |
+| `working-policy` | Discipline: ask when ambiguous · plan file before code · minimal change · verify with git | app `working-policy` |
 
-> `working-policy` là **cross-cutting**: mọi skill khác kế thừa nó (giống `rules` chung trong skill.json).
-
----
-
-## 3. Skill STACK-PARAMETRIZED — 1 intent, content theo pack
-
-Ma trận verb × stack. Ô = tên hiện có ở project mẫu (nếu có), trống = cần viết pack.
-
-| Skill (intent) | Mục đích | React | Flutter | Kotlin | Swift | Go | RN | ASP.NET |
-|----------------|----------|-------|---------|--------|-------|----|----|---------|
-| `scaffold-data` | Dựng data layer từ API/Swagger | `add-api` | `add-data`,`swagger-import` | — | — | — | — | — |
-| `scaffold-screen` | Dựng màn hình/feature theo kiến trúc | `new-list`,`new-dialog` | `add-feature` | — | — | — | — | — |
-| `build-ui` | Dựng/sửa UI theo design-system | `gen-components/*` | `fix-ui` | — | — | — | — | — |
-| `gen-routes` | Sinh route theo cấu trúc file | (react-router) | (GetX routes) | — | — | — | — | — |
-
-Trống không có nghĩa là thiếu skill — skill vẫn dùng chung; chỉ cần **viết rule pack** cho stack đó.
+> `working-policy` is **cross-cutting**: every other skill inherits it (like the shared `rules` in skill.json).
 
 ---
 
-## 4. Một RULE PACK gồm những gì (khuôn chung cho mọi stack)
+## 3. STACK-PARAMETRIZED skills — one intent, content from the pack
 
-Mỗi pack (vd `packs/react.json`, `packs/flutter.json`) khai báo:
+Verb × stack matrix. A cell = the existing name in the sample project (if any); blank = a pack still to write.
 
-- **architecture** — luồng tầng (data → logic → view) và trách nhiệm mỗi tầng
-- **conventions** — quy tắc đặt tên, cấu trúc thư mục, i18n, format
-- **lint** — chuẩn code-style + cách chạy linter của stack
-- **templates** — mẫu file cho `scaffold-*` (data layer, screen, component)
-- **design-system / tokens** — component dùng chung, màu/spacing token
-- **library-docs** — index các lib project thực dùng (chống bịa API) — theo mẫu `libraries/` của ghm-hrm
-- **detect** — dấu hiệu nhận diện stack (xem §6)
+| Skill (intent) | Purpose | React | Flutter | Kotlin | Swift | Go | RN | ASP.NET |
+|----------------|---------|-------|---------|--------|-------|----|----|---------|
+| `scaffold-data` | Build the data layer from an API/Swagger | `add-api` | `add-data`,`swagger-import` | — | — | — | — | — |
+| `scaffold-screen` | Build a screen/feature per the architecture | `new-list`,`new-dialog` | `add-feature` | — | — | — | — | — |
+| `build-ui` | Build/edit UI per the design system | `gen-components/*` | `fix-ui` | — | — | — | — | — |
+| `gen-routes` | Generate routes from the file structure | (react-router) | (GetX routes) | — | — | — | — | — |
+
+A blank does not mean a missing skill — the skill is still shared; you just need to **write the rule pack** for that stack.
 
 ---
 
-## 5. Hai pack đầu tiên (trích từ project mẫu)
+## 4. What a RULE PACK contains (common shape for every stack)
 
-### 5a. `react` pack (từ ghm-hrm)
+Each pack (e.g. `packs/react.json`, `packs/flutter.json`) declares:
+
+- **architecture** — the layer flow (data → logic → view) and each layer's responsibility
+- **conventions** — naming, folder structure, i18n, formatting rules
+- **lint** — the code-style standard + how to run the stack's linter
+- **templates** — file templates for `scaffold-*` (data layer, screen, component)
+- **design-system / tokens** — shared components, color/spacing tokens
+- **library-docs** — an index of the libraries the project actually uses (to prevent invented APIs) — following ghm-hrm's `libraries/` pattern
+- **detect** — the signal that identifies the stack (see §6)
+
+---
+
+## 5. The first two packs (extracted from sample projects)
+
+### 5a. `react` pack (from ghm-hrm)
 - **architecture:** `src/api/{resource}.ts` (data) → `handler.tsx` (logic hook) → `index.tsx` (view)
-- **stack:** React 18 + TS + Vite, TanStack Query/Table, React Hook Form, CASL (permission), design system `@ghm`
-- **conventions bắt buộc:**
-  - luôn `return res` để message BE tới được toast
-  - `useConfirm` cho delete / icon-only / auto-save / thoát form dirty
-  - global search debounce 500ms, reset page 1, server-side
-  - tránh race: nhét mọi param vào react-query `queryKey`
-  - table 3 dạng: server paginated (skip/take) · nhỏ (`pageCount:-1`) · infinite (`useInfiniteQuery`)
-  - validate RHF: title ≤100, description ≤250, trim
-- **templates:** `add-api` (types+service+query hooks) · `new-list` · `new-dialog` · 9 gen-components pattern
-- **library-docs:** đã có sẵn thư mục `docs/reference/libraries/` — bê nguyên
+- **stack:** React 18 + TS + Vite, TanStack Query/Table, React Hook Form, CASL (permissions), the `@ghm` design system
+- **key conventions:**
+  - always `return res` so backend messages reach the toast
+  - `useConfirm` for delete / icon-only / auto-save / exiting a dirty form
+  - global search debounced 500ms, reset to page 1, server-side
+  - avoid races: put every param into the react-query `queryKey`
+  - 3 table shapes: server paginated (skip/take) · small (`pageCount: -1`) · infinite (`useInfiniteQuery`)
+  - RHF validation: title ≤100, description ≤250, trim
+- **templates:** `add-api` (types+service+query hooks) · `new-list` · `new-dialog` · 9 gen-components patterns
+- **library-docs:** the existing `docs/reference/libraries/` folder — reuse as-is
 
-### 5b. `flutter` pack (từ app-hrm)
+### 5b. `flutter` pack (from app-hrm)
 - **architecture:** View → Controller → Repository → Provider → native ForgeRock (`AuthMethodChannel`)
 - **stack:** Flutter + GetX (binding/controller/page/repository), ScreenUtil, GetStorage, multi-brand + multi-flavor
-- **conventions bắt buộc:**
-  - API CHỈ qua `AuthMethodChannel` — cấm dio/http
-  - entrypoint thật là `main_{dev,staging,prod}.dart`
-  - không hardcode màu — dùng semantic token (5 tầng: primitives→semantic→ThemeController→ThemeData)
-  - kích thước qua ScreenUtil; string UI tiếng Việt; `log` thay `print`; ưu tiên `const`
-  - build/run qua `scripts/flutter_flavor.sh` theo flavor
+- **key conventions:**
+  - API ONLY via `AuthMethodChannel` — no dio/http
+  - real entrypoints are `main_{dev,staging,prod}.dart`
+  - no hardcoded colors — use semantic tokens (5 layers: primitives→semantic→ThemeController→ThemeData)
+  - size via ScreenUtil; Vietnamese UI strings; `log` over `print`; prefer `const`
+  - build/run via `scripts/flutter_flavor.sh` per flavor
 - **templates:** `add-data` (Provider/Model/Repository) · `add-feature` (binding/controller/page/route) · `fix-ui`
 - **library-docs / references:** architecture, conventions, getx-conventions, theme-tokens, toolkit, rules
 
 ---
 
-## 6. "Tự động phân chia" = detect stack (việc xác định, không cần suy luận)
+## 6. "Auto-division" = detect the stack (deterministic, no reasoning)
 
-`skillrunner detect` quét file dấu hiệu và chọn pack:
+`skillrunner detect` scans signature files and picks the pack:
 
-| File dấu hiệu | Stack | Pack |
-|---------------|-------|------|
+| Signature file | Stack | Pack |
+|----------------|-------|------|
 | `pubspec.yaml` | Flutter | `flutter` |
-| `package.json` chứa `react-native` | React Native | `rn` |
-| `package.json` chứa `react` (không RN) | React | `react` |
+| `package.json` contains `react-native` | React Native | `rn` |
+| `package.json` contains `react` (not RN) | React | `react` |
 | `build.gradle(.kts)` + Kotlin/Java | Android native | `kotlin` |
 | `*.xcodeproj` / `Package.swift` | iOS Swift | `swift` |
 | `go.mod` | Go | `go` |
 | `*.csproj` / `*.sln` | ASP.NET | `dotnet` |
 
-Luồng: `detect` → chọn pack → `emit <skill>` gộp **skill (chung) + rules (pack)** → Claude thực thi.
+Flow: `detect` → pick pack → `emit <skill>` merges **skill (shared) + rules (pack)** → Claude executes.
 
 ---
 
-## 7. Ánh xạ vào skillrunner (đã dựng)
+## 7. Mapping to skillrunner (already built)
 
-- `skills` trong `skill.json` = mục §2 + §3 (verb dùng chung) — **viết một lần**.
-- `rules` groups = rule pack theo stack (§4–§5) — có thể tách thành `packs/<stack>.json`.
-- Thêm lệnh `skillrunner detect` (§6) để tự chọn pack; `emit` tự nạp pack tương ứng.
-- `working-policy` → đưa vào `rules` chung, mọi skill `appliesRules` kế thừa.
-
----
-
-## 8. Lộ trình
-
-1. ✅ Khung skillrunner (skill chung + rules + emit) — đã có.
-2. ✅ Pack `react` + `flutter` (trích từ 2 project mẫu).
-3. ✅ `skillrunner detect` + tách `packs/<stack>.json`.
-4. ✅ Skill core generic (`plan-feature`, `spec-from-source`, `commit`, `refactor`, `explain-lib`, `check-diff`).
-5. ✅ Pack `go`, `dotnet`, `kotlin`, `swift`, `rn` (soạn theo best-practice từng stack — chưa có project mẫu, cần tinh chỉnh khi áp thật).
-6. ▶ Áp thử vào `Flutter_weather` (đang trống) để kiểm chứng "kéo vào là chạy, không tái cấu trúc".
-7. ▶ Thêm `go test` cho `Detect`/`Emit` (đảm bảo output xác định).
-
-> Lưu ý: pack `go`/`dotnet` là **backend** — nhóm `design-system` được diễn giải thành "quy ước API contract"
-> (response envelope, status code, OpenAPI), không phải UI. Skill `build-ui` ít dùng cho hai stack này.
+- `skills` in `skill.json` = §2 + §3 (the shared verbs) — **written once**.
+- `rules` groups = per-stack packs (§4–§5) — split into `packs/<stack>.json`.
+- The `skillrunner detect` command (§6) auto-picks the pack; `emit` loads the matching pack.
+- `working-policy` → lives in the shared `rules`; every skill with `appliesRules` inherits it.
 
 ---
 
-## 9. Rủi ro đã ghi nhận
+## 8. Roadmap
 
-1. **Không nhân bản skill theo stack** — chỉ nhân bản *rule pack*.
-2. **Công sức thật nằm ở rule pack**, không ở việc chẻ skill; intent ít và ổn định.
-3. **Skill sinh code luôn phụ thuộc pack** ở đầu ra → pack là bắt buộc với `scaffold-*`, `build-ui`.
-4. **Skill core generic** viết một lần, không gắn stack.
-5. Pack phải giữ **library-docs chính xác** (chống bịa API) — theo mẫu `libraries/` của ghm-hrm.
+1. ✅ skillrunner core (shared skills + rules + emit) — done.
+2. ✅ `react` + `flutter` packs (extracted from the two sample projects).
+3. ✅ `skillrunner detect` + split `packs/<stack>.json`.
+4. ✅ Core generic skills (`plan-feature`, `spec-from-source`, `commit`, `refactor`, `explain-lib`, `check-diff`).
+5. ✅ `go`, `dotnet`, `kotlin`, `swift`, `rn` packs (composed from per-stack best practices — no sample project, tune when applied for real).
+6. ▶ Try it on `Flutter_weather` (currently empty) to prove "drop it in and it runs, no restructuring".
+7. ▶ Add `go test` for `Detect`/`Emit` (guarantee deterministic output).
+
+> Note: the `go`/`dotnet` packs are **backend** — their `design-system` group is reinterpreted as
+> "API-contract conventions" (response envelope, status codes, OpenAPI), not UI. The `build-ui` skill
+> is rarely used for those two stacks.
+
+---
+
+## 9. Recorded risks
+
+1. **Do not duplicate skills per stack** — duplicate only the *rule pack*.
+2. **The real effort is in the rule pack**, not in splitting skills; intent is small and stable.
+3. **Code-generating skills always depend on the pack** for their output → the pack is mandatory for `scaffold-*` and `build-ui`.
+4. **Core generic skills** are written once, not tied to a stack.
+5. Packs must keep **accurate library-docs** (to prevent invented APIs) — following ghm-hrm's `libraries/` pattern.

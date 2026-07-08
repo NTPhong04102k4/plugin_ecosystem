@@ -1,34 +1,35 @@
 # CLAUDE.md
 
-## skillrunner — cách dùng trong mọi phiên
+## skillrunner — how to use it every session
 
-Repo này là **bể skill trung tâm**: một binary Go `skillrunner` + `skill.json` (skill dùng
-chung) + `packs/<stack>.json` (rule riêng theo stack). Nó KHÔNG tự suy luận — nó phát hiện
-stack và in ra "mệnh lệnh" (rules + các bước) để **bạn (Claude) thực thi**.
+This repo is a **central skill pool**: a Go binary `skillrunner` + `skill.json` (shared
+skills) + `packs/<stack>.json` (stack-specific rules). It does NOT reason — it detects the
+stack and prints "marching orders" (rules + steps) for **you (Claude) to execute**.
 
-Kiến trúc: **1 skill dùng chung + rule pack theo stack**. Đổi dự án chỉ đổi pack, không đổi skill.
+Architecture: **one shared skill + a per-stack rule pack**. Switching projects only changes
+the pack, never the skill.
 
-### Khi người dùng yêu cầu một việc khớp với một skill
+### When the user asks for something that matches a skill
 
-1. Phát hiện stack: `./bin/skillrunner detect --dir <project>` (hoặc chạy trong project).
-2. Xem skill: `./bin/skillrunner list`
-3. Lấy mệnh lệnh: `./bin/skillrunner emit <skill> --dir <project>`
-   - Tự động detect stack và gộp `packs/<stack>.json`.
-   - Ép pack thủ công: `--pack react` (hoặc flutter/go/...).
-4. **Đọc và làm theo** output — tuân thủ mục "Rules you MUST follow".
-5. Nếu có `[needs approval]` / "Approval gate": chỉ **đề xuất plan/goal** rồi DỪNG chờ duyệt,
-   không sửa file trước khi được đồng ý.
-6. Nếu thấy cảnh báo `⚠ Stack rule groups not loaded`: pack cho stack đó chưa có — báo người
-   dùng hoặc tạo `packs/<stack>.json` trước khi tiếp tục.
+1. Detect the stack: `./bin/skillrunner detect --dir <project>` (or run inside the project).
+2. See the skills: `./bin/skillrunner list`
+3. Get the marching orders: `./bin/skillrunner emit <skill> --dir <project>`
+   - Auto-detects the stack and merges `packs/<stack>.json`.
+   - Force a pack manually: `--pack react` (or flutter/go/...).
+4. **Read and follow** the output — obey the "Rules you MUST follow" section.
+5. If a skill is marked `[needs approval]` / has an "Approval gate": only **propose a
+   plan/goal** and STOP for the user's decision; do not change files before approval.
+6. If you see the warning `⚠ Stack rule groups not loaded`: no pack exists for that stack —
+   tell the user or create `packs/<stack>.json` before continuing.
 
-### Cấu trúc
-- `skill.json` — skill dùng chung (core generic + parametrized). Sửa một lần.
-- `packs/react.json`, `packs/flutter.json` — rule theo stack (architecture/conventions/lint/
-  templates/design-system/library-docs). Thêm stack mới = thêm 1 file pack.
-- JSON cho phép comment `//`.
+### Layout
+- `skill.json` — shared skills (core generic + parametrized). Edit once.
+- `packs/react.json`, `packs/flutter.json`, ... — per-stack rules (architecture / conventions /
+  lint / templates / design-system / library-docs). Adding a new stack = adding one pack file.
+- JSON allows `//` line comments.
 
-### Lệnh khác
-- `skillrunner validate` — kiểm manifest
-- `skillrunner init` — tạo skill.json mẫu trong dự án mới
+### Other commands
+- `skillrunner validate` — check the manifest
+- `skillrunner init` — write a starter skill.json into a new project
 
-Tài liệu: `docs/skill-runner-design.md` (thiết kế), `docs/skill-taxonomy.md` (bể skill hợp nhất).
+Docs: `docs/skill-runner-design.md` (design), `docs/skill-taxonomy.md` (the unified skill pool).
