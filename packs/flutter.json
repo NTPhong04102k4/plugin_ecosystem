@@ -1,0 +1,42 @@
+{
+  "stack": "flutter",
+
+  // Stack-specific rule content for Flutter (Flutter + GetX). Extracted from the
+  // app-hrm project conventions. Fills the packRules referenced by shared skills.
+  "rules": {
+    "architecture": [
+      "Layers: View -> Controller -> Repository -> Provider -> native ForgeRock (AuthMethodChannel).",
+      "All API access goes through the native AuthMethodChannel — never use dio/http directly.",
+      "GetX screen unit = Binding + Controller + Page + Repository; register the route.",
+      "Real entrypoints are main_{dev,staging,prod}.dart (per flavor)."
+    ],
+    "conventions": [
+      "Feature/folder names in Vietnamese snake_case.",
+      "UI strings in Vietnamese; use the i18n and date-format helpers.",
+      "Use `log` instead of `print`; prefer `const` constructors.",
+      "Reuse shared widgets from core/widgets before making new ones.",
+      "Build/run only via scripts/flutter_flavor.sh with the correct flavor."
+    ],
+    "lint": [
+      "Follow analysis_options.yaml (flutter_lints); fix hits within changed scope.",
+      "Common rules: prefer_const, single-quotes, avoid_print, use ScreenUtil sizing.",
+      "Suppress a rule only with a justified inline ignore; run the pre-finish checklist."
+    ],
+    "templates": [
+      "scaffold-data: Provider (endpoint via AuthMethodChannel) + Model (null-defensive fromJson) + Repository method.",
+      "scaffold-screen: Binding + Controller + Page + route registration following the GetX template.",
+      "Do not invent a new structure — copy the getx-conventions template."
+    ],
+    "design-system": [
+      "Never hardcode colors — use semantic tokens (5 layers: primitives -> semantic -> ThemeController -> ThemeData).",
+      "Size everything with ScreenUtil (.w/.h/.sp); no raw pixel literals.",
+      "Multi-brand aware (ThaiThinh / NeoMedic) via ThemeController.",
+      "Toast/loading/dialog via the shared core/widgets recipes."
+    ],
+    "library-docs": [
+      "Reference: architecture.md, conventions.md, getx-conventions.md, theme-tokens.md, toolkit.md, rules.md.",
+      "Auth/API is native ForgeRock via AuthMethodChannel — no Dart HTTP client libraries.",
+      "State/storage: GetX + GetStorage. Do not add competing state libraries."
+    ]
+  }
+}

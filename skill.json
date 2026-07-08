@@ -1,0 +1,177 @@
+{
+  "version": "1",
+  "project": "my-plugin-ecosystem",
+
+  // Base rules apply everywhere. Stack-specific content (architecture, conventions,
+  // lint, templates, design-system, library-docs) is NOT here — it lives in
+  // packs/<stack>.json and is merged in at emit time. That separation is what lets
+  // one skill definition serve every stack without duplication.
+  "rules": {
+    "working-policy": [
+      "When the request is ambiguous, ask via AskUserQuestion before coding — do not guess.",
+      "Write a short plan / work-log before any code change; get approval for non-trivial work.",
+      "Minimal change only: stay within the requested scope, no drive-by refactors.",
+      "Verify with `git status` / `git diff` before finishing; report what changed.",
+      "Never commit on your own — present changes and let the user decide."
+    ],
+    "technical": [
+      "Generated output must be deterministic: same input => same output.",
+      "No new dependency without justification.",
+      "Never overwrite a file the tool did not generate without explicit approval."
+    ]
+  },
+
+  // Rule groups supplied by a stack pack. Skills may reference these in
+  // appliesRules; they resolve once `skillrunner` merges the detected pack.
+  "packRules": ["architecture", "conventions", "lint", "templates", "design-system", "library-docs"],
+
+  "skills": {
+
+    // ---- Core skills: generic, identical across every stack ----
+
+    "plan-feature": {
+      "description": "Turn a feature request into a plan + goals for the user to decide.",
+      "goal": "Produce a reviewable plan; do NOT write code yet.",
+      "appliesRules": ["working-policy"],
+      "requiresApproval": true,
+      "inputs": ["The feature request", "Relevant existing files/structure"],
+      "instructions": [
+        "Restate the request in one sentence to confirm understanding.",
+        "List 2-4 measurable candidate goals for the user to pick from.",
+        "Draft a step-by-step plan naming the files that would change.",
+        "Call out risks, unknowns, and decisions only the user can make.",
+        "Present everything and STOP for the user's decision."
+      ],
+      "outputs": ["A plan document — no code changes"]
+    },
+
+    "spec-from-source": {
+      "description": "Turn a Jira/Confluence issue or a Swagger/OpenAPI file into a structured spec.",
+      "goal": "A clear spec (requirements, acceptance criteria, models, endpoints, flow) before coding.",
+      "appliesRules": ["working-policy"],
+      "requiresApproval": true,
+      "inputs": ["A Jira/Confluence link, or an OpenAPI/Swagger file path"],
+      "instructions": [
+        "Read the source (via Atlassian MCP for Jira/Confluence, or parse the OpenAPI file).",
+        "Extract: requirements, acceptance criteria, data models, endpoints, UI flow.",
+        "List ambiguities and open questions explicitly.",
+        "Write the spec in the user's language; do not start implementation.",
+        "Present and STOP for confirmation before any code or write-back."
+      ],
+      "outputs": ["A structured spec document — no code changes"]
+    },
+
+    "commit": {
+      "description": "Split the working changes into per-module commits with clear messages.",
+      "goal": "Reviewable, module-scoped commits — only after the user confirms.",
+      "appliesRules": ["working-policy"],
+      "instructions": [
+        "Run `git status` and `git diff` to understand what changed.",
+        "Group changes by module/feature; propose one commit per group.",
+        "Draft short messages in the user's language.",
+        "Present the commit plan and STOP for confirmation before committing."
+      ],
+      "outputs": ["A confirmed commit plan, then the commits"]
+    },
+
+    "refactor": {
+      "description": "Improve a component/module for clarity and reuse WITHOUT changing behavior.",
+      "goal": "Cleaner code, identical behavior, minimal diff.",
+      "appliesRules": ["working-policy", "conventions", "lint"],
+      "inputs": ["The target file(s)"],
+      "instructions": [
+        "Read the target and identify duplication, dead code, deep nesting.",
+        "Apply early-returns, extract reused pieces, prefer existing shared components.",
+        "Do NOT change observable behavior or public signatures without approval.",
+        "Run the stack linter and report the before/after diff."
+      ],
+      "outputs": ["Refactored files", "Lint clean", "A diff summary"]
+    },
+
+    "explain-lib": {
+      "description": "Explain how THIS project actually uses a given library (no invented APIs).",
+      "goal": "Accurate what/where/pattern/pitfalls, grounded in real usage.",
+      "appliesRules": ["working-policy", "library-docs"],
+      "inputs": ["The library name"],
+      "instructions": [
+        "Read the project's curated library docs (library-docs pack rules) first.",
+        "Find real call sites in the codebase to confirm usage.",
+        "Summarize: what it's used for, where, the standard pattern, common pitfalls.",
+        "Do not invent APIs — if unknown, say so."
+      ],
+      "outputs": ["A grounded explanation"]
+    },
+
+    "check-diff": {
+      "description": "Review the current git diff against the stack's conventions.",
+      "goal": "Report convention violations with file:line, then run the linter.",
+      "appliesRules": ["working-policy", "conventions", "lint"],
+      "instructions": [
+        "Run `git diff` to get the pending changes.",
+        "Check each change against the conventions rules for this stack.",
+        "Report violations as `file:line — rule` with a suggested fix.",
+        "Run the stack linter and include its results."
+      ],
+      "outputs": ["A violation report", "Linter results"]
+    },
+
+    // ---- Stack-parametrized skills: one intent, content from the pack ----
+
+    "scaffold-data": {
+      "description": "Build the data layer for an API call following the stack's architecture.",
+      "goal": "Types/models + service/provider + wiring, per the pack's templates.",
+      "appliesRules": ["working-policy", "technical", "architecture", "conventions", "templates", "library-docs"],
+      "inputs": ["Endpoint, method, request/response shape (ask if unknown)"],
+      "instructions": [
+        "Confirm the endpoint contract; ask for missing request/response shapes.",
+        "Copy the pack's data-layer template (do not invent a new structure).",
+        "Generate the model/types (null-defensive) and the service/provider.",
+        "Wire it into the repository/hook layer as the architecture requires.",
+        "Do NOT build UI here; stop at the data layer."
+      ],
+      "outputs": ["Data-layer files following the pack conventions"]
+    },
+
+    "scaffold-screen": {
+      "description": "Scaffold a new screen/feature following the stack's architecture.",
+      "goal": "A screen split into the pack's layers, wired into routing.",
+      "appliesRules": ["working-policy", "architecture", "conventions", "templates"],
+      "inputs": ["Screen name, purpose, whether it is a list/detail/form"],
+      "instructions": [
+        "Pick the matching pack template (list / detail / form / dialog).",
+        "Generate the layers the architecture requires (view / logic / data split).",
+        "Register the route per the routing convention.",
+        "Follow all naming and structure conventions from the pack."
+      ],
+      "outputs": ["Screen files + route registration"]
+    },
+
+    "build-ui": {
+      "description": "Build or edit UI using the stack's design system and tokens.",
+      "goal": "UI that reuses shared components and obeys design tokens.",
+      "appliesRules": ["working-policy", "conventions", "design-system"],
+      "inputs": ["The UI to build/change and where it lives"],
+      "instructions": [
+        "Reuse existing shared components before creating new ones.",
+        "Use semantic design tokens — never hardcode colors/spacing.",
+        "Follow the design-system pack patterns for the component type.",
+        "Keep behavior and accessibility feedback (loading/success/error) visible."
+      ],
+      "outputs": ["UI files using shared components and tokens"]
+    },
+
+    "gen-routes": {
+      "description": "Generate/refresh route entries from the project's file structure.",
+      "goal": "Deterministic file -> route mapping following the convention.",
+      "appliesRules": ["working-policy", "architecture", "conventions"],
+      "inputs": ["The routing convention and the pages/routes directory"],
+      "instructions": [
+        "Scan the configured directory for route files.",
+        "Derive each route path from the convention.",
+        "Write the routes file with stable, sorted output.",
+        "Report added/removed/changed routes as a diff summary."
+      ],
+      "outputs": ["The generated routes file", "A diff summary"]
+    }
+  }
+}

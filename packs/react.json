@@ -1,0 +1,46 @@
+{
+  "stack": "react",
+
+  // Stack-specific rule content for React (React 18 + TS + Vite). Extracted from
+  // the ghm-hrm project conventions. These groups fill the packRules referenced
+  // by shared skills (architecture, conventions, lint, templates, design-system,
+  // library-docs). Edit here once; every skill inherits it on React projects.
+  "rules": {
+    "architecture": [
+      "Data flow per resource: src/api/{resource}.ts (data) -> handler.tsx (logic hook) -> index.tsx (view).",
+      "Data layer uses TanStack Query hooks (useCustomQuery / useMutation wrappers).",
+      "Keep view (index.tsx) dumb; put state, effects, and handlers in handler.tsx.",
+      "Server state via react-query; do not duplicate it into local state."
+    ],
+    "conventions": [
+      "Always `return res` from service calls so backend messages reach the toast.",
+      "Use useConfirm for: delete, icon-only actions, auto-save, and exiting a dirty form (not for labeled create/update buttons).",
+      "Global search: one debounced (500ms) server-side search per list-with-detail, `keyword` param, reset to page 1 on change.",
+      "Avoid stale results: put every query param into the react-query queryKey.",
+      "Tables have 3 shapes: server paginated (skip/take), small non-paginated (pageCount: -1), infinite (useInfiniteQuery).",
+      "Form validation via React Hook Form: title <= 100 chars, description <= 250, trim inputs, show Field.ErrorText.",
+      "Permission-gate actions with CASL ability.can(action, subject)."
+    ],
+    "lint": [
+      "Run the project ESLint config; fix warnings within the changed scope.",
+      "Prefer early-return and switch-case over deep nesting; use enums over magic strings.",
+      "TypeScript strict: no implicit any; define a Props interface/type per component."
+    ],
+    "templates": [
+      "scaffold-data: copy an existing src/api/{resource}.ts — types + service + react-query hooks.",
+      "scaffold-screen list: table + debounced global search + filter + pagination, split into index.tsx (view) and handler.tsx (logic).",
+      "scaffold-screen dialog: create/edit form with RHF validation, useConfirm on dirty-exit, `return res`."
+    ],
+    "design-system": [
+      "Use the internal design system (@ghm) components: Dialog/Portal, BaseSelect/MultiCombobox, FileUpload, Field.",
+      "Combobox: createListCollection with itemToValue/itemToString; form values are arrays of ids.",
+      "Dialog kinds: view-only, form, delete-confirm, drawer (note the Tailwind v4 `transform-none!` override quirk).",
+      "Styling with Tailwind; do not hardcode colors — use design tokens/classes."
+    ],
+    "library-docs": [
+      "Read docs/reference/libraries/ (README index + per-lib .md) before using any library.",
+      "The library index marks usage status (used / CSS-only / transitive / installed-but-unused) — trust it, do not invent APIs.",
+      "Key libs: tanstack-react-query, tanstack-react-table, react-hook-form, casl, react-router-dom, i18next, exceljs."
+    ]
+  }
+}
