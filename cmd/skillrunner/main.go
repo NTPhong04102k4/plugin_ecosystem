@@ -25,11 +25,13 @@ Usage:
   skillrunner emit <skill>             Print marching orders for <skill> (for Claude to execute)
   skillrunner validate                 Check that the manifest is well-formed
   skillrunner init                     Write a starter skill.json in the current dir
+  skillrunner bootstrap                Ensure the project's CLAUDE.md tells Claude to use sr
 
 Flags:
   -f, --file <path>   Manifest path (default: skill.json)
   -p, --pack <stack>  Force a stack pack (e.g. react, flutter). Default: auto-detect.
       --dir <path>    Project dir to detect against (default: manifest's dir)
+      --force         (bootstrap) Write the project CLAUDE.md even if already covered
 
 Flow: detect stack -> emit merges shared skill + stack rule pack -> Claude executes.
 Skills marked [needs approval] stop for your decision before changing files.
@@ -44,11 +46,13 @@ func main() {
 	cmd := os.Args[1]
 	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	var file, pack, dir string
+	var force bool
 	fs.StringVar(&file, "file", "skill.json", "manifest path")
 	fs.StringVar(&file, "f", "skill.json", "manifest path (shorthand)")
 	fs.StringVar(&pack, "pack", "", "force stack pack")
 	fs.StringVar(&pack, "p", "", "force stack pack (shorthand)")
 	fs.StringVar(&dir, "dir", "", "project dir to detect against")
+	fs.BoolVar(&force, "force", false, "bootstrap: write project CLAUDE.md even if already covered")
 	// Go's flag package stops at the first positional, so flags placed AFTER the
 	// skill name would be ignored. Interleave parsing to accept flags anywhere.
 	rest := parseInterleaved(fs, os.Args[2:])
@@ -68,6 +72,11 @@ func main() {
 			fatal(err)
 		}
 		fmt.Printf("Wrote starter manifest to %s\n", file)
+
+	case "bootstrap":
+		if err := ensureBootstrap(detectDir, force); err != nil {
+			fatal(err)
+		}
 
 	case "validate":
 		m, err := skill.Load(file)
