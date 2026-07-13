@@ -1,5 +1,6 @@
 BINARY := skillrunner
 PKG := ./cmd/skillrunner
+PREFIX := /usr/local/bin
 
 .DEFAULT_GOAL := help
 .PHONY: help build all test clean install
@@ -29,8 +30,14 @@ test: ## Run go vet and go test
 	go vet ./...
 	go test ./...
 
-install: build ## Install the binary into $GOBIN or /usr/local/bin
-	go install $(PKG)
+install: build ## Install bin/skillrunner into /usr/local/bin (uses sudo if needed; override PREFIX=)
+	@if [ -w "$(PREFIX)" ]; then \
+		cp bin/$(BINARY) "$(PREFIX)/$(BINARY)"; \
+	else \
+		echo "→ $(PREFIX) not writable; using sudo (you may be prompted for your password)"; \
+		sudo cp bin/$(BINARY) "$(PREFIX)/$(BINARY)"; \
+	fi
+	@echo "Installed $(BINARY) to $(PREFIX)/$(BINARY)"
 
 clean: ## Remove the bin/ directory
 	rm -rf bin
