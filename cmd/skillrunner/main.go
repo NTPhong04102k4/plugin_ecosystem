@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/ghmsoft/skillrunner/internal/skill"
 )
@@ -22,7 +23,8 @@ Usage:
   skillrunner detect                   Print the detected stack (pack) for this project
   skillrunner status                   Show stack + whether the project profile/registry are cached
   skillrunner list                     List skills (auto-detects & merges the stack pack)
-  skillrunner emit <skill>             Print marching orders for <skill> (for Claude to execute)
+  skillrunner emit <skill>             Print marching orders for <skill> (records it in the project ledger)
+  skillrunner ledger                   Show which skills have already been emitted in this project
   skillrunner validate                 Check that the manifest is well-formed
   skillrunner init                     Write a starter skill.json in the current dir
   skillrunner bootstrap                Ensure the project's CLAUDE.md tells Claude to use sr
@@ -105,6 +107,16 @@ func main() {
 		}
 		reportCache(detectDir, "Profile", "docs/project-profile.md", "run `learn-project` to build it")
 		reportCache(detectDir, "Registry", "docs/module-registry.md", "will be created as features land")
+		if l, err := skill.LoadLedger(detectDir); err == nil {
+			fmt.Println(l.StatusLine())
+		}
+
+	case "ledger":
+		l, err := skill.LoadLedger(detectDir)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Print(l.Summary())
 
 	case "list":
 		m, err := loadWithPack(file, detectDir, packDir, pack)
@@ -126,6 +138,16 @@ func main() {
 			fatal(err)
 		}
 		fmt.Print(out)
+		// Record the emit in the project ledger so a later session sees this
+		// skill was already run here. A ledger failure must not swallow the
+		// marching orders we just printed — warn and carry on.
+		stack := pack
+		if stack == "" {
+			stack = skill.Detect(detectDir).Stack
+		}
+		if err := skill.RecordEmit(detectDir, projectLabel(detectDir), rest[0], stack, time.Now()); err != nil {
+			fmt.Fprintf(os.Stderr, "note: could not record emit in ledger (%v)\n", err)
+		}
 
 	case "-h", "--help", "help":
 		fmt.Print(usage)
@@ -176,6 +198,15 @@ func parseInterleaved(fs *flag.FlagSet, args []string) []string {
 		args = args[1:]
 	}
 	return positionals
+}
+
+// projectLabel names the target project by its directory, for the ledger stored
+// inside it — the central manifest's own name would be wrong there.
+func projectLabel(dir string) string {
+	if abs, err := filepath.Abs(dir); err == nil {
+		return filepath.Base(abs)
+	}
+	return filepath.Base(dir)
 }
 
 // reportCache prints whether a cached knowledge file exists, with a hint if not.
