@@ -12,10 +12,12 @@ help: ## Show this help
 		awk 'BEGIN {FS = ":.*?## "} {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@echo "Examples:"
-	@echo "  make build            # build bin/$(BINARY) for this platform"
-	@echo "  make all              # cross-compile macOS/Linux/Windows"
-	@echo "  ./bin/$(BINARY) detect        # detect the project stack"
-	@echo "  ./bin/$(BINARY) emit <skill>  # print marching orders for Claude"
+	@echo "  make build               # build bin/$(BINARY) for this platform"
+	@echo "  make all                 # cross-compile macOS/Linux/Windows"
+	@echo "  ./bin/$(BINARY) detect           # detect the project stack"
+	@echo "  ./bin/$(BINARY) emit <skill>     # print marching orders for Claude"
+	@echo "  ./bin/$(BINARY) emit all         # print orders for every skill (catalog)"
+	@echo "  ./bin/$(BINARY) apply-base       # copy the stack's base configs (eslint/linter/...) into the project"
 
 build: ## Build bin/skillrunner for the current platform
 	go build -o bin/$(BINARY) $(PKG)
