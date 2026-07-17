@@ -24,6 +24,8 @@ Usage:
   skillrunner status                   Show stack + whether the project profile/registry are cached
   skillrunner list                     List skills (auto-detects & merges the stack pack)
   skillrunner emit <skill>             Print marching orders for <skill> (records it in the project ledger)
+  skillrunner emit all                 Print marching orders for EVERY skill (catalog dump; not recorded)
+  skillrunner apply-base               Copy the stack's base config files (eslint/linter/etc.) into the project
   skillrunner ledger                   Show which skills have already been emitted in this project
   skillrunner validate                 Check that the manifest is well-formed
   skillrunner init                     Write a starter skill.json in the current dir
@@ -34,6 +36,7 @@ Flags:
   -p, --pack <stack>  Force a stack pack (e.g. react, flutter). Default: auto-detect.
       --dir <path>    Project dir to detect against (default: manifest's dir)
       --force         (bootstrap) Write the project CLAUDE.md even if already covered
+                      (apply-base) Overwrite existing config files instead of skipping them
 
 Flow: detect stack -> emit merges shared skill + stack rule pack -> Claude executes.
 Skills marked [needs approval] stop for your decision before changing files.
@@ -127,11 +130,21 @@ func main() {
 
 	case "emit":
 		if len(rest) < 1 {
-			fatal(fmt.Errorf("emit requires a skill name; run `skillrunner list`"))
+			fatal(fmt.Errorf("emit requires a skill name (or `all`); run `skillrunner list`"))
 		}
 		m, err := loadWithPack(file, detectDir, packDir, pack)
 		if err != nil {
 			fatal(err)
+		}
+		// `emit all` is a catalog dump of every skill's orders. It is a read-only
+		// reference view, so it prints and returns without touching the ledger.
+		if rest[0] == "all" {
+			out, err := m.EmitAll()
+			if err != nil {
+				fatal(err)
+			}
+			fmt.Print(out)
+			break
 		}
 		out, err := m.Emit(rest[0])
 		if err != nil {
@@ -147,6 +160,32 @@ func main() {
 		}
 		if err := skill.RecordEmit(detectDir, projectLabel(detectDir), rest[0], stack, time.Now()); err != nil {
 			fmt.Fprintf(os.Stderr, "note: could not record emit in ledger (%v)\n", err)
+		}
+
+	case "apply-base":
+		// Copy the stack's base config files into the project. This needs only the
+		// pack (not the shared manifest): the assets live on the pack.
+		stack := pack
+		if stack == "" {
+			stack = skill.Detect(detectDir).Stack
+		}
+		if stack == "" {
+			fatal(fmt.Errorf("could not detect a stack; pass --pack <stack> (available: %v)", skill.AvailablePacks(packDir)))
+		}
+		p, err := skill.LoadPack(packDir, stack)
+		if err != nil {
+			fatal(err)
+		}
+		results, err := p.ApplyBase(packDir, detectDir, force)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Printf("apply-base [%s] -> %s\n", stack, detectDir)
+		for _, r := range results {
+			fmt.Printf("  %s %-28s %s\n", applyMark(r.Status), r.To, applyNote(r))
+		}
+		if !force && anySkipped(results) {
+			fmt.Println("\nSome files were skipped because they already exist. Re-run with --force to overwrite them.")
 		}
 
 	case "-h", "--help", "help":
@@ -216,6 +255,43 @@ func reportCache(dir, label, rel, hint string) {
 	} else {
 		fmt.Printf("%-8s missing (%s) — %s\n", label+":", rel, hint)
 	}
+}
+
+// applyMark returns a status glyph for one apply-base result line.
+func applyMark(status string) string {
+	switch status {
+	case skill.ApplyWrote, skill.ApplyOverwrote:
+		return "✓"
+	case skill.ApplySkipped:
+		return "•"
+	default: // ApplyMissing or anything unexpected
+		return "✗"
+	}
+}
+
+// applyNote picks the human-readable trailing note for a result line.
+func applyNote(r skill.ApplyResult) string {
+	switch r.Status {
+	case skill.ApplyOverwrote:
+		if r.Detail != "" {
+			return "overwrote — " + r.Detail
+		}
+		return "overwrote"
+	case skill.ApplyWrote:
+		return r.Detail
+	default:
+		return r.Detail
+	}
+}
+
+// anySkipped reports whether any asset was left untouched because it existed.
+func anySkipped(results []skill.ApplyResult) bool {
+	for _, r := range results {
+		if r.Status == skill.ApplySkipped {
+			return true
+		}
+	}
+	return false
 }
 
 func fatal(err error) {

@@ -1,0 +1,44 @@
+# golangci-lint configuration — sensible modern default shipped by skillrunner's
+# `go` pack (generated, not extracted from a reference project). Drop it in with
+# `sr apply-base --stack go`. Tune the enabled linters to your team's taste.
+run:
+  timeout: 3m
+  tests: true
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck      # unchecked errors
+    - govet         # suspicious constructs
+    - ineffassign   # ineffectual assignments
+    - staticcheck   # broad static analysis
+    - unused        # unused code
+    - gocritic      # opinionated diagnostics
+    - revive        # golint successor, style
+    - misspell      # common misspellings
+    - unconvert     # redundant type conversions
+    - gofmt         # gofmt-clean
+    - goimports     # import grouping/formatting
+
+linters-settings:
+  gofmt:
+    simplify: true
+  goimports:
+    # Group your module's own imports last. Update the prefix per project.
+    local-prefixes: github.com/ghmsoft
+  revive:
+    rules:
+      - name: exported            # exported identifiers need doc comments
+      - name: error-return
+      - name: error-naming
+      - name: early-return
+
+issues:
+  # Tests are noisier; relax the strictest linters there.
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gocritic
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -23,7 +23,8 @@
       "Format with gofmt/goimports; code must be gofmt-clean.",
       "Run go vet and golangci-lint; fix issues within the changed scope.",
       "No unused variables/imports; no naked returns in long functions.",
-      "Run go test ./... ; prefer table-driven tests."
+      "Run go test ./... ; prefer table-driven tests.",
+      "The base config ships `.golangci.yml` (via `sr apply-base`); respect its enabled linters — do not disable rules to silence a finding, fix the code."
     ],
     "templates": [
       "scaffold-data: define a model struct (json tags, pointers for nullable fields), a Repository interface + implementation, and mapping to/from the store.",
@@ -41,5 +42,12 @@
       "Router: chi / gin / echo — follow whichever the repo already uses; do not mix.",
       "DB: sqlx or an existing ORM (gorm) — match the repo; logging via slog/zap consistently."
     ]
-  }
+  },
+
+  // Base config files copied into a project by `sr apply-base --stack go`.
+  // `from` is relative to packs/assets/ ; `to` is relative to the project root.
+  "assets": [
+    { "from": "go/.golangci.yml", "to": ".golangci.yml", "desc": "golangci-lint config (generated default)" },
+    { "from": "go/.editorconfig", "to": ".editorconfig", "desc": "editor defaults (tabs for Go)" }
+  ]
 }

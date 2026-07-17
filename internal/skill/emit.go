@@ -75,6 +75,35 @@ func (m *Manifest) Emit(name string) (string, error) {
 	return b.String(), nil
 }
 
+// EmitAll composes the marching orders for every skill, in stable sorted order,
+// separated by horizontal rules. It is a catalog/reference dump — a way to read
+// the whole pool at once — so it deliberately does NOT record anything in the
+// ledger (nothing is actually being run here).
+func (m *Manifest) EmitAll() (string, error) {
+	names := m.SkillNames()
+	if len(names) == 0 {
+		return "", fmt.Errorf("no skills defined")
+	}
+	var b strings.Builder
+	if m.Project != "" {
+		fmt.Fprintf(&b, "# ALL SKILLS — %s (%d)\n\n", m.Project, len(names))
+	} else {
+		fmt.Fprintf(&b, "# ALL SKILLS (%d)\n\n", len(names))
+	}
+	b.WriteString("This is a reference dump of every skill's marching orders. Pick the one that matches the task; do not run all of them.\n\n")
+	for i, name := range names {
+		if i > 0 {
+			b.WriteString("\n---\n\n")
+		}
+		out, err := m.Emit(name)
+		if err != nil {
+			return "", err
+		}
+		b.WriteString(out)
+	}
+	return b.String(), nil
+}
+
 // capitalize upper-cases the first letter of an ASCII rule-group name.
 func capitalize(s string) string {
 	if s == "" {
