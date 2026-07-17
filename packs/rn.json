@@ -20,6 +20,7 @@
     "lint": [
       "Run ESLint (@react-native config) + Prettier; fix warnings in changed scope.",
       "No unused styles/imports; avoid anonymous functions in render for hot paths.",
+      "The base ships .eslintrc.js + .prettierrc.js + tsconfig.base.json (via `sr apply-base`); needs devDeps: @react-native/eslint-config, prettier. Fix code to satisfy rules.",
       "Run tests (Jest/React Native Testing Library) for hooks/logic."
     ],
     "templates": [
@@ -38,5 +39,13 @@
       "Common: react-native-reanimated, react-native-gesture-handler, @react-native-async-storage/async-storage.",
       "Follow the app's existing library choices; do not add native deps without justifying the linking cost."
     ]
-  }
+  },
+
+  // Base config files copied into a project by `sr apply-base --stack rn`.
+  "assets": [
+    { "from": "rn/.eslintrc.js", "to": ".eslintrc.js", "desc": "ESLint (@react-native preset + strict overrides)" },
+    { "from": "rn/.prettierrc.js", "to": ".prettierrc.js", "desc": "Prettier config (RN defaults)" },
+    { "from": "rn/tsconfig.base.json", "to": "tsconfig.base.json", "desc": "strict TS base — extend alongside @react-native/typescript-config" },
+    { "from": "rn/.editorconfig", "to": ".editorconfig", "desc": "editor defaults (2-space)" }
+  ]
 }

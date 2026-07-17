@@ -1,0 +1,15 @@
+{
+  "//": "Strict TS base for the rn pack (skillrunner). Have tsconfig.json extend this AND @react-native: { \"extends\": [\"@react-native/typescript-config\", \"./tsconfig.base.json\"] }.",
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  }
+}

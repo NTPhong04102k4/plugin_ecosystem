@@ -20,6 +20,7 @@
     "lint": [
       "Follow analysis_options.yaml (flutter_lints); fix hits within changed scope.",
       "Common rules: prefer_const, single-quotes, avoid_print, use ScreenUtil sizing.",
+      "The base ships analysis_options.yaml (via `sr apply-base`); it needs dev_dependency flutter_lints in pubspec.yaml. Fix code to satisfy the lints.",
       "Suppress a rule only with a justified inline ignore; run the pre-finish checklist."
     ],
     "templates": [
@@ -38,5 +39,11 @@
       "Auth/API is native ForgeRock via AuthMethodChannel — no Dart HTTP client libraries.",
       "State/storage: GetX + GetStorage. Do not add competing state libraries."
     ]
-  }
+  },
+
+  // Base config files copied into a project by `sr apply-base --stack flutter`.
+  "assets": [
+    { "from": "flutter/analysis_options.yaml", "to": "analysis_options.yaml", "desc": "strict Dart analyzer + lints (needs flutter_lints)" },
+    { "from": "flutter/.editorconfig", "to": ".editorconfig", "desc": "editor defaults (2-space Dart)" }
+  ]
 }

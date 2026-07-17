@@ -1,0 +1,42 @@
+# Dart/Flutter analysis options — strict baseline shipped by skillrunner's
+# `flutter` pack (`sr apply-base --stack flutter`).
+#
+# Requires dev_dependency: flutter_lints (add it to pubspec.yaml).
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # Treat these as build-blocking.
+    invalid_annotation_target: ignore
+    missing_required_param: error
+    missing_return: error
+    todo: ignore
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/generated_plugin_registrant.dart"
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_dynamic_calls
+    - avoid_print
+    - avoid_returning_null_for_future
+    - avoid_slow_async_io
+    - cancel_subscriptions
+    - close_sinks
+    - directives_ordering
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_locals
+    - prefer_single_quotes
+    - require_trailing_commas
+    - sort_child_properties_last
+    - unawaited_futures
+    - unnecessary_await_in_return
+    - use_build_context_synchronously
+    - use_key_in_widget_constructors

@@ -144,6 +144,11 @@ func main() {
 				fatal(err)
 			}
 			fmt.Print(out)
+			// `emit all` is a catalog view, not an execution. It deliberately does
+			// NOT touch the ledger — recording all skills on a browse would make a
+			// later session think each was actually run here. Say so, so the empty
+			// ledger is expected behavior, not a surprise.
+			fmt.Fprintln(os.Stderr, "\n(catalog view — nothing recorded in the ledger; `emit <skill>` records a real run)")
 			break
 		}
 		out, err := m.Emit(rest[0])

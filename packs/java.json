@@ -1,0 +1,51 @@
+{
+  "stack": "java",
+
+  // Android native (Java) pack. Composed from idiomatic modern Android
+  // conventions for Java codebases (MVVM, AndroidX, LiveData/RxJava). Sibling of
+  // the `kotlin` pack — detection falls back here for Gradle projects with no
+  // Kotlin signal.
+  "rules": {
+    "architecture": [
+      "MVVM layers: UI (Activity/Fragment) -> ViewModel -> UseCase/Interactor -> Repository -> data source.",
+      "Dependency injection with Hilt/Dagger; scope dependencies correctly.",
+      "Expose UI state from the ViewModel via LiveData (or RxJava); observe with lifecycle awareness.",
+      "Domain models separate from network DTOs and DB entities; map at the repository."
+    ],
+    "conventions": [
+      "Async off the main thread (RxJava/Executors/WorkManager); never block the UI thread.",
+      "Prefer immutability: final fields, unmodifiable collections; avoid leaking mutable state.",
+      "Null-safety with androidx.annotation @NonNull/@Nullable; use Optional at boundaries; avoid returning null collections.",
+      "Handle errors explicitly (typed callbacks/Result wrapper); do not swallow exceptions.",
+      "UI strings in resources (strings.xml), not hardcoded."
+    ],
+    "lint": [
+      "Run Checkstyle + Android Lint (and SpotBugs where configured); fix issues in changed scope.",
+      "No star imports; no unused imports/variables; brace all control statements.",
+      "The base config ships `checkstyle.xml` (via `sr apply-base`); respect its rules — fix the code, do not loosen the config to silence a finding.",
+      "Run unit tests (JUnit) for ViewModel/UseCase logic."
+    ],
+    "templates": [
+      "scaffold-data: Retrofit API interface + DTO (null-annotated) + Repository interface/impl + mapper to domain model.",
+      "scaffold-screen: Activity/Fragment + ViewModel exposing LiveData<UiState> + navigation registration.",
+      "Mirror the module structure the app already uses; do not invent a new one."
+    ],
+    "design-system": [
+      "Use Material Components (com.google.android.material); theme via styles.xml/themes.xml — never hardcode colors.",
+      "Size with dp/sp; reuse shared views/layouts before creating new ones.",
+      "Support light/dark theme; handle insets/safe areas.",
+      "Content descriptions on interactive elements for accessibility."
+    ],
+    "library-docs": [
+      "Networking: Retrofit + OkHttp + Gson/Moshi — match the repo.",
+      "Async: RxJava or Coroutines-interop/Executors; Local DB: Room. DI: Hilt/Dagger.",
+      "UI: AndroidX + Navigation component; follow existing usage, don't mix patterns arbitrarily."
+    ]
+  },
+
+  // Base config files copied into a project by `sr apply-base --stack java`.
+  "assets": [
+    { "from": "java/checkstyle.xml", "to": "checkstyle.xml", "desc": "Checkstyle config (strict Google/Sun subset)" },
+    { "from": "java/.editorconfig", "to": ".editorconfig", "desc": "editor defaults (4-space Java)" }
+  ]
+}

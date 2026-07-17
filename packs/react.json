@@ -24,7 +24,8 @@
     "lint": [
       "Run the project ESLint config; fix warnings within the changed scope.",
       "Prefer early-return and switch-case over deep nesting; use enums over magic strings.",
-      "TypeScript strict: no implicit any; define a Props interface/type per component."
+      "TypeScript strict: no implicit any; define a Props interface/type per component.",
+      "The base ships eslint.config.js + .prettierrc.json + tsconfig.base.json (via `sr apply-base`); it needs devDeps: typescript-eslint, @eslint/js, globals, eslint-plugin-react-hooks, eslint-plugin-react-refresh. Fix code to satisfy the rules, do not disable them."
     ],
     "templates": [
       "scaffold-data: copy an existing src/api/{resource}.ts — types + service + react-query hooks.",
@@ -42,5 +43,13 @@
       "The library index marks usage status (used / CSS-only / transitive / installed-but-unused) — trust it, do not invent APIs.",
       "Key libs: tanstack-react-query, tanstack-react-table, react-hook-form, casl, react-router-dom, i18next, exceljs."
     ]
-  }
+  },
+
+  // Base config files copied into a project by `sr apply-base --stack react`.
+  "assets": [
+    { "from": "react/eslint.config.js", "to": "eslint.config.js", "desc": "ESLint flat config (strict, type-aware)" },
+    { "from": "react/.prettierrc.json", "to": ".prettierrc.json", "desc": "Prettier config" },
+    { "from": "react/tsconfig.base.json", "to": "tsconfig.base.json", "desc": "strict TS base — extend from tsconfig.json" },
+    { "from": "react/.editorconfig", "to": ".editorconfig", "desc": "editor defaults (2-space)" }
+  ]
 }

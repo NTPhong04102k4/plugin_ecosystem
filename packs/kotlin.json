@@ -20,6 +20,7 @@
     "lint": [
       "Run ktlint/detekt and Android Lint; fix issues in changed scope.",
       "No !! non-null assertions in production paths; handle nullability explicitly.",
+      "The base ships .editorconfig (ktlint) + detekt.yml (via `sr apply-base`); run detekt with --build-upon-default-config. Fix code, do not loosen the config.",
       "Run unit tests (JUnit) for ViewModel/UseCase logic."
     ],
     "templates": [
@@ -38,5 +39,11 @@
       "Async: Coroutines + Flow. Local DB: Room. DI: Hilt.",
       "UI: Jetpack Compose + Navigation Compose; follow existing usage, don't mix Views/Compose arbitrarily."
     ]
-  }
+  },
+
+  // Base config files copied into a project by `sr apply-base --stack kotlin`.
+  "assets": [
+    { "from": "kotlin/.editorconfig", "to": ".editorconfig", "desc": "editor defaults + ktlint settings (4-space)" },
+    { "from": "kotlin/detekt.yml", "to": "detekt.yml", "desc": "detekt override (use --build-upon-default-config)" }
+  ]
 }

@@ -1,0 +1,18 @@
+# SwiftFormat configuration — swift pack base (skillrunner). Install SwiftFormat
+# (brew install swiftformat) and run: swiftformat .
+--swiftversion 5.9
+--indent 4
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--commas inline
+--trimwhitespace always
+--stripunusedargs closure-only
+--self remove
+--importgrouping testable-bottom
+--emptybraces no-space
+--ranges no-space
+
+--disable wrapMultilineStatementBraces
+--exclude Pods,.build,**/*.generated.swift

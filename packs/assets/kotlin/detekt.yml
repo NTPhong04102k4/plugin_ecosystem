@@ -1,0 +1,55 @@
+# detekt configuration — strict-leaning override shipped by skillrunner's
+# `kotlin` pack (`sr apply-base --stack kotlin`).
+#
+# Run with --build-upon-default-config so this MERGES on top of detekt's
+# defaults (rules omitted here keep their default behavior):
+#   detekt --config detekt.yml --build-upon-default-config
+build:
+  maxIssues: 0
+
+complexity:
+  active: true
+  LongMethod:
+    active: true
+    threshold: 60
+  LongParameterList:
+    active: true
+    functionThreshold: 6
+    constructorThreshold: 7
+  TooManyFunctions:
+    active: true
+    thresholdInClasses: 15
+    thresholdInFiles: 20
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 15
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: true
+  SwallowedException:
+    active: true
+
+naming:
+  active: true
+
+potential-bugs:
+  active: true
+
+style:
+  active: true
+  MagicNumber:
+    active: true
+    ignoreNumbers: ['-1', '0', '1', '2']
+    ignoreHashCodeFunction: true
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+  ForbiddenComment:
+    active: false
+  WildcardImport:
+    active: true
+  ReturnCount:
+    active: true
+    max: 3
