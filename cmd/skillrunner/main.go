@@ -30,6 +30,7 @@ Usage:
   skillrunner validate                 Check that the manifest is well-formed
   skillrunner init                     Write a starter skill.json in the current dir
   skillrunner bootstrap                Ensure the project's CLAUDE.md tells Claude to use sr
+  skillrunner serve                    Run as an MCP server over stdio (exposes detect/list/emit/apply-base as tools)
 
 Flags:
   -f, --file <path>   Manifest path (default: skill.json)
@@ -193,6 +194,13 @@ func main() {
 			fmt.Println("\nSome files were skipped because they already exist. Re-run with --force to overwrite them.")
 		}
 
+	case "serve":
+		// Run as an MCP server over stdio. packDir is where packs/ live (next to
+		// the manifest); detectDir is the default project when a tool omits "dir".
+		if err := runMCPServer(file, detectDir, packDir); err != nil {
+			fatal(err)
+		}
+
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 
@@ -255,11 +263,16 @@ func projectLabel(dir string) string {
 
 // reportCache prints whether a cached knowledge file exists, with a hint if not.
 func reportCache(dir, label, rel, hint string) {
+	fmt.Print(cacheLine(dir, label, rel, hint))
+}
+
+// cacheLine is reportCache as a string, so both the CLI and the MCP server can
+// render identical cache status without one printing and the other capturing.
+func cacheLine(dir, label, rel, hint string) string {
 	if _, err := os.Stat(filepath.Join(dir, rel)); err == nil {
-		fmt.Printf("%-8s cached (%s) — reuse it, do not re-scan source\n", label+":", rel)
-	} else {
-		fmt.Printf("%-8s missing (%s) — %s\n", label+":", rel, hint)
+		return fmt.Sprintf("%-8s cached (%s) — reuse it, do not re-scan source\n", label+":", rel)
 	}
+	return fmt.Sprintf("%-8s missing (%s) — %s\n", label+":", rel, hint)
 }
 
 // applyMark returns a status glyph for one apply-base result line.

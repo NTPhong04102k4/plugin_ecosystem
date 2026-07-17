@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "skillrunner": {
+      "command": "skillrunner",
+      "args": [
+        "serve",
+        "-f",
+        "/Users/ghmsoft/Documents/Personal/my-plugin-ecosystem/skill.json"
+      ]
+    }
+  }
+}
