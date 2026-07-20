@@ -22,7 +22,7 @@ Kiến trúc đã chốt (xem cuộc trao đổi): **Claude là orchestrator, kh
 
 ```
 authswagger ──fetch──► lọc tag ──► codegen types.ts ──► instantiate ──► emit DIGEST gọn
-  (spec thô)          (kin-openapi) (openapi-typescript) template pack        │
+  (spec thô)          (stdlib json) (openapi-typescript) template pack        │
         └──────────────── LÀN 0-TOKEN (sr pull, không có Claude) ────────────┘
                                                                              ▼ (~0.5–2k token)
                                               CLAUDE: đọc digest → build UI + nối ⇄ hook
@@ -65,10 +65,10 @@ sr pull --tag <tag> [flags]
                 Chết → in: "authswagger chưa chạy. Chạy: cd <WorkFlowAutomation> && go run ."
                 → exit code != 0. KHÔNG tự spawn.
 2. Fetch      : GET spec (kèm Basic Auth header nếu authswagger bật BASIC_AUTH_*)
-3. Parse      : kin-openapi → lọc operations theo --tag
+3. Parse      : stdlib encoding/json (metadata nông) → lọc operations theo --tag
                 Tag không tồn tại → liệt kê các tag có sẵn rồi thoát
 4. Resolve    : proxyBase từ servers[] (vd /env/dev/api); ghi đè bằng --base nếu có
-5. Codegen    : npx openapi-typescript → types.ts
+5. Codegen    : filterSpecByTag → npx openapi-typescript → types.ts
                 npx/Node thiếu → báo lỗi rõ (không fallback im lặng)
 6. Scaffold   : instantiate template react-query của pack → <tag>.hooks.ts (gọi qua proxyBase)
 7. Digest     : in JSON gọn ra stdout + ghi cache vào docs/context/pull-<tag>.json
@@ -138,14 +138,25 @@ sr pull --tag <tag> [flags]
 - Không tự bật authswagger.
 - Không sinh code Go (target là FE TypeScript).
 - **Không đụng authswagger:** dùng `/openapi.json?env=&spec=` sẵn có; `sr pull` tự lọc tag bằng
-  `kin-openapi`. Không thêm endpoint, không MCP (transport = **CLI-first**, xem
+  stdlib. Không thêm endpoint, không MCP (transport = **CLI-first**, xem
   [`mcp-architecture.md`](./mcp-architecture.md) đã hoãn).
 
-## 12. Phụ thuộc cần xác minh khi code
+## 12. Phụ thuộc & ghi chú hiện thực (đã code — cập nhật 2026-07-20)
 
-- `packs/react.json` phải có **template data-layer react-query**. Nếu chưa có → bổ sung trước
-  (đây là tiền đề cho bước 6). Kiểm tra ở đầu giai đoạn hiện thực.
+- `packs/react.json` có `codegen` trỏ tới `packs/assets/react/templates/{hooks,index}.ts.tmpl`
+  (đã thêm ở bước A).
 - Node/npx có sẵn (cho openapi-typescript).
-- `kin-openapi` thêm vào `go.mod`.
+- **KHÔNG dùng `kin-openapi`.** Giữ nguyên tính chất *zero-dependency* của binary: parse spec
+  bằng stdlib `encoding/json` (chỉ cần metadata nông: operationId/method/path/params/body). Việc
+  dựng type nặng đã có openapi-typescript lo. `go.mod` vẫn 0 dependency.
+- **Lọc spec theo tag trước khi codegen** (`filterSpecByTag`): cho openapi-typescript ăn spec đã
+  rút gọn còn operation của tag đó (giữ nguyên toàn bộ components). Lý do phát hiện khi test thật:
+  spec QLPK **dùng lại operationId giữa các tag** (vd `GenerateCode`, `GetFeesByService`) → nếu cho
+  ăn cả spec, `operations` bị trùng key → types.ts không compile. Lọc theo tag khử trùng + giảm
+  kích thước (Khoa: types.ts từ ~8800 → ~600 dòng).
+- **Robust operationId thiếu:** endpoint không có operationId → fallback type `unknown`
+  (`HasOp=false`, không tham chiếu `operations`), không vỡ TS.
+- Đã verify thật: `sr pull --env dev --spec 6 --tag Khoa` → 3 endpoint (GetKhoaList/SearchKhoa/
+  SyncKhoa), `tsc --noEmit` exit 0, `OpRes` trích đúng type (không phải `unknown`).
 </content>
 </invoke>

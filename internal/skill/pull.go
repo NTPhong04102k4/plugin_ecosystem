@@ -62,7 +62,9 @@ type DigestEndpoint struct {
 // --- shallow OpenAPI model (only what pull needs) ---
 
 type oaSpec struct {
-	Servers    []struct{ URL string `json:"url"` } `json:"servers"`
+	Servers []struct {
+		URL string `json:"url"`
+	} `json:"servers"`
 	Paths      map[string]map[string]json.RawMessage `json:"paths"`
 	Components struct {
 		Parameters map[string]oaParam `json:"parameters"`
@@ -146,9 +148,16 @@ func Pull(opts PullOptions, pack *Pack) (*Digest, string, error) {
 	hooksFile := slug(opts.Tag) + ".hooks.ts"
 	data.HooksModule = "./" + slug(opts.Tag) + ".hooks"
 
-	// 1) types.ts via openapi-typescript (delegated schema work).
+	// 1) types.ts via openapi-typescript (delegated schema work). Feed it a spec
+	// reduced to this tag's operations so it never emits `operations` entries for
+	// OTHER tags — real specs reuse operationIds across tags (e.g. GenerateCode),
+	// which would make the whole-spec output fail to compile with duplicates.
 	typesPath := filepath.Join(absOut, "types.ts")
-	if err := genTypes(specBytes, typesPath); err != nil {
+	filtered, err := filterSpecByTag(specBytes, opts.Tag)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := genTypes(filtered, typesPath); err != nil {
 		return nil, "", err
 	}
 
@@ -259,6 +268,59 @@ func buildCodegen(spec *oaSpec, tag, proxyBase string) (CodegenData, []DigestEnd
 		return data, nil, fmt.Errorf("no operations tagged %q; available tags: %v", tag, tags)
 	}
 	return data, deps, nil
+}
+
+// filterSpecByTag returns a reduced spec keeping only operations tagged tag (all
+// components preserved untouched so $refs still resolve). This scopes the
+// openapi-typescript output to one tag, avoiding cross-tag duplicate-operationId
+// collisions and shrinking the generated types.
+func filterSpecByTag(specBytes []byte, tag string) ([]byte, error) {
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(specBytes, &top); err != nil {
+		return nil, fmt.Errorf("parse spec top-level: %w", err)
+	}
+	rawPaths, ok := top["paths"]
+	if !ok {
+		return specBytes, nil
+	}
+	var paths map[string]map[string]json.RawMessage
+	if err := json.Unmarshal(rawPaths, &paths); err != nil {
+		return nil, fmt.Errorf("parse spec paths: %w", err)
+	}
+	filtered := map[string]map[string]json.RawMessage{}
+	for p, item := range paths {
+		kept := map[string]json.RawMessage{}
+		for m, raw := range item {
+			if !isHTTPMethod(m) {
+				continue
+			}
+			var op oaOp
+			if err := json.Unmarshal(raw, &op); err != nil {
+				continue
+			}
+			if hasTag(op.Tags, tag) {
+				kept[m] = raw
+			}
+		}
+		if len(kept) > 0 {
+			filtered[p] = kept
+		}
+	}
+	pf, err := json.Marshal(filtered)
+	if err != nil {
+		return nil, err
+	}
+	top["paths"] = pf
+	return json.Marshal(top)
+}
+
+func isHTTPMethod(m string) bool {
+	for _, x := range httpMethods {
+		if x == m {
+			return true
+		}
+	}
+	return false
 }
 
 // --- spec fetching ---
