@@ -27,6 +27,7 @@ Usage:
   skillrunner emit all                 Print marching orders for EVERY skill (catalog dump; not recorded)
   skillrunner apply-base               Copy the stack's base config files (eslint/linter/etc.) into the project
   skillrunner pull --tag <tag>         Bridge authswagger spec -> types.ts + react-query hook skeleton + digest (0 token)
+  skillrunner fetch --from <url>       Bridge Confluence/Google Sheet (link+token) -> markdown + digest (0 token)
   skillrunner ledger                   Show which skills have already been emitted in this project
   skillrunner validate                 Check that the manifest is well-formed
   skillrunner init                     Write a starter skill.json in the current dir
@@ -70,7 +71,13 @@ func main() {
 	fs.StringVar(&pullOut, "out", "", "pull: output dir (default src/api/<tag>)")
 	fs.StringVar(&pullBase, "base", "", "pull: override proxyBase (default: spec servers[0].url)")
 	fs.StringVar(&pullCodegen, "codegen", "ts", "pull: type generator (only \"ts\")")
-	fs.BoolVar(&pullNoCache, "no-cache", false, "pull: ignore cached digest and regenerate")
+	fs.BoolVar(&pullNoCache, "no-cache", false, "pull/fetch: ignore cached digest and regenerate")
+	// fetch-only flags (reuses --from/--out/--no-cache above; ignored by other commands)
+	var fetchEmail, fetchTokenEnv, fetchRange, fetchGid string
+	fs.StringVar(&fetchEmail, "email", "", "fetch: Confluence Basic-auth email (default: config)")
+	fs.StringVar(&fetchTokenEnv, "token-env", "", "fetch: env var holding the token/secret (default: per-source)")
+	fs.StringVar(&fetchRange, "range", "", "fetch: Google Sheet A1 range (e.g. Sheet1!A1:H)")
+	fs.StringVar(&fetchGid, "gid", "", "fetch: Google Sheet tab id (default: #gid= in the URL)")
 	// Go's flag package stops at the first positional, so flags placed AFTER the
 	// skill name would be ignored. Interleave parsing to accept flags anywhere.
 	rest := parseInterleaved(fs, os.Args[2:])
@@ -232,6 +239,23 @@ func main() {
 			PackDir:    packDir,
 			NoCache:    pullNoCache,
 		}, p)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Println(digestJSON)
+
+	case "fetch":
+		// Deterministic bridge: Confluence/Google Sheet -> markdown + digest (0 token).
+		_, digestJSON, err := skill.Fetch(skill.FetchOptions{
+			From:       pullFrom,
+			Out:        pullOut,
+			Email:      fetchEmail,
+			TokenEnv:   fetchTokenEnv,
+			Range:      fetchRange,
+			Gid:        fetchGid,
+			ProjectDir: detectDir,
+			NoCache:    pullNoCache,
+		})
 		if err != nil {
 			fatal(err)
 		}
