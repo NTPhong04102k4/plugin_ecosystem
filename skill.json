@@ -67,16 +67,17 @@
     },
 
     "spec-from-source": {
-      "description": "Turn a Jira/Confluence issue, an OpenAPI/Swagger file, or an authenticated OpenAPI endpoint (e.g. an authswagger proxy URL) into a structured spec.",
+      "description": "Turn a Jira/Confluence issue, a Google Sheet, an OpenAPI/Swagger file, or an authenticated OpenAPI endpoint (e.g. an authswagger proxy URL) into a structured spec.",
       "goal": "A clear spec (requirements, acceptance criteria, models, endpoints, flow) before coding.",
       "appliesRules": ["working-policy"],
       "requiresApproval": true,
       "inputs": [
-        "A Jira/Confluence link, an OpenAPI/Swagger file path, or an authswagger endpoint URL (`<authswagger-base>/openapi.json?env=&spec=`)",
+        "A Jira/Confluence link, a Google Sheet link, an OpenAPI/Swagger file path, or an authswagger endpoint URL (`<authswagger-base>/openapi.json?env=&spec=`)",
         "For a project that keeps a target-projects registry (alias -> path + default env/group), resolve the alias there first instead of asking the user to restate env/group each time"
       ],
       "instructions": [
-        "Read the source (via Atlassian MCP for Jira/Confluence, parse the OpenAPI file, or GET the authswagger URL — it is already authenticated and its `servers`/`basePath` already point at authswagger's own proxy).",
+        "For a Confluence page or Google Sheet link, prefer `sr fetch --from <url|alias>` FIRST (0-token deterministic bridge): it writes clean markdown to docs/specs/ and prints a digest — read that instead of the raw page/sheet. Configure auth once in `.skillrunner/fetch.json` (Confluence email+token env; Google service-account/refresh). Fall back to Atlassian MCP only if `sr fetch` is unavailable.",
+        "Otherwise read the source (parse the OpenAPI file, or GET the authswagger URL — it is already authenticated and its `servers`/`basePath` already point at authswagger's own proxy).",
         "If the request names one or a few specific endpoint paths rather than 'the whole API', filter the fetched spec down to just those paths/operations before extracting — don't carry the full spec into the output.",
         "Extract: requirements, acceptance criteria, data models, endpoints, UI flow.",
         "List ambiguities and open questions explicitly.",
