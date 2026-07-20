@@ -18,6 +18,11 @@ type Pack struct {
 	Stack  string  `json:"stack"`
 	Rules  Rules   `json:"rules"`
 	Assets []Asset `json:"assets,omitempty"`
+	// Codegen holds real code templates (Go text/template) that `sr pull` fills
+	// deterministically from an OpenAPI spec — distinct from the prose in
+	// Rules["templates"], which is guidance for Claude. Optional; only stacks that
+	// support `sr pull` ship it. See codegen.go.
+	Codegen *Codegen `json:"codegen,omitempty"`
 }
 
 // Asset is one base-config file a pack ships. From is a path relative to

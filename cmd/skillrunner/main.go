@@ -26,6 +26,7 @@ Usage:
   skillrunner emit <skill>             Print marching orders for <skill> (records it in the project ledger)
   skillrunner emit all                 Print marching orders for EVERY skill (catalog dump; not recorded)
   skillrunner apply-base               Copy the stack's base config files (eslint/linter/etc.) into the project
+  skillrunner pull --tag <tag>         Bridge authswagger spec -> types.ts + react-query hook skeleton + digest (0 token)
   skillrunner ledger                   Show which skills have already been emitted in this project
   skillrunner validate                 Check that the manifest is well-formed
   skillrunner init                     Write a starter skill.json in the current dir
@@ -59,6 +60,17 @@ func main() {
 	fs.StringVar(&pack, "p", "", "force stack pack (shorthand)")
 	fs.StringVar(&dir, "dir", "", "project dir to detect against")
 	fs.BoolVar(&force, "force", false, "bootstrap: write project CLAUDE.md even if already covered")
+	// pull-only flags (ignored by other commands)
+	var pullFrom, pullEnv, pullSpec, pullTag, pullOut, pullBase, pullCodegen string
+	var pullNoCache bool
+	fs.StringVar(&pullFrom, "from", "http://localhost:8080/openapi.json", "pull: OpenAPI spec URL (or a local file path)")
+	fs.StringVar(&pullEnv, "env", "dev", "pull: authswagger environment (?env=)")
+	fs.StringVar(&pullSpec, "spec", "", "pull: authswagger spec group (?spec=)")
+	fs.StringVar(&pullTag, "tag", "", "pull: OpenAPI tag to filter operations by (required)")
+	fs.StringVar(&pullOut, "out", "", "pull: output dir (default src/api/<tag>)")
+	fs.StringVar(&pullBase, "base", "", "pull: override proxyBase (default: spec servers[0].url)")
+	fs.StringVar(&pullCodegen, "codegen", "ts", "pull: type generator (only \"ts\")")
+	fs.BoolVar(&pullNoCache, "no-cache", false, "pull: ignore cached digest and regenerate")
 	// Go's flag package stops at the first positional, so flags placed AFTER the
 	// skill name would be ignored. Interleave parsing to accept flags anywhere.
 	rest := parseInterleaved(fs, os.Args[2:])
@@ -193,6 +205,37 @@ func main() {
 		if !force && anySkipped(results) {
 			fmt.Println("\nSome files were skipped because they already exist. Re-run with --force to overwrite them.")
 		}
+
+	case "pull":
+		// Deterministic bridge: authswagger spec -> data layer + digest (0 token).
+		// Resolves the target project's stack pack for its codegen templates.
+		stack := pack
+		if stack == "" {
+			stack = skill.Detect(detectDir).Stack
+		}
+		if stack == "" {
+			fatal(fmt.Errorf("could not detect a stack for pull; pass --pack <stack> (available: %v)", skill.AvailablePacks(packDir)))
+		}
+		p, err := skill.LoadPack(packDir, stack)
+		if err != nil {
+			fatal(err)
+		}
+		_, digestJSON, err := skill.Pull(skill.PullOptions{
+			From:       pullFrom,
+			Env:        pullEnv,
+			Spec:       pullSpec,
+			Tag:        pullTag,
+			Out:        pullOut,
+			Base:       pullBase,
+			Codegen:    pullCodegen,
+			ProjectDir: detectDir,
+			PackDir:    packDir,
+			NoCache:    pullNoCache,
+		}, p)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Println(digestJSON)
 
 	case "serve":
 		// Run as an MCP server over stdio. packDir is where packs/ live (next to

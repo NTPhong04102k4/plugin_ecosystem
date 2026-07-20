@@ -1,2 +1,4 @@
 node_modules/
 /bin/
+# Per-project runtime state written by `sr emit`
+.skillrunner/

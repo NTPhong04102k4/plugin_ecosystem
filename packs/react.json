@@ -45,6 +45,15 @@
     ]
   },
 
+  // Real code templates filled deterministically by `sr pull` (0 token) — distinct
+  // from the prose in rules.templates. Paths are relative to packs/assets/.
+  // Strategy: openapi-typescript -> types.ts; these render the hook skeleton +
+  // barrel. Claude rewires the client to the project's react-query wrapper after.
+  "codegen": {
+    "hooks": "react/templates/hooks.ts.tmpl",
+    "index": "react/templates/index.ts.tmpl"
+  },
+
   // Base config files copied into a project by `sr apply-base --stack react`.
   "assets": [
     { "from": "react/eslint.config.js", "to": "eslint.config.js", "desc": "ESLint flat config (strict, type-aware)" },
