@@ -14,10 +14,14 @@ import (
 	"time"
 )
 
+// gsheetExportBase is the CSV-export host. A package var so integration tests can
+// point it at a local httptest server; production always uses docs.google.com.
+var gsheetExportBase = "https://docs.google.com"
+
 // gsheetFetch GETs the CSV export of one tab and returns the raw CSV bytes. token
 // may be empty for link-shared sheets; when set it is sent as a Bearer header.
 func gsheetFetch(id, gid, token string) ([]byte, error) {
-	url := "https://docs.google.com/spreadsheets/d/" + id + "/export?format=csv"
+	url := gsheetExportBase + "/spreadsheets/d/" + id + "/export?format=csv"
 	if gid != "" {
 		url += "&gid=" + gid
 	}

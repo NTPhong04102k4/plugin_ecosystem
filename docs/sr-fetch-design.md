@@ -215,5 +215,10 @@ Auth chết / token sai / trang-sheet không có quyền → báo lỗi rõ + ex
 - **Verify:** unit test phủ ADF→markdown (heading/bold/list/table + escape `|`), CSV→markdown
   (ragged row padding, sheet trống), detect nguồn (confluence/gsheet + alias + lỗi), cache
   round-trip, guard không overwrite file lạ, token source (fake). Đường lỗi CLI đã chạy thật
-  (unsupported URL, thiếu page id, thiếu token). **Happy-path qua mạng cần credential thật** →
-  chưa chạy trong CI offline; sẽ verify khi có token Confluence + service-account Google.
+  (unsupported URL, thiếu page id, thiếu token).
+- **End-to-end (mock server):** `fetch_integration_test.go` chạy trọn `Fetch()` qua `httptest`:
+  Confluence (Basic auth đúng → ADF parse → ghi `docs/specs/*.md` có header → digest sections →
+  cache hit lần 2, server bị gọi cả 2 lần), Google Sheet link-shared (CSV → bảng markdown +
+  digest table), và alias trong config. Base-URL được inject qua `confluenceBaseURL` /
+  `gsheetExportBase` (mặc định là host thật). **Chỉ còn phần chạm host thật** (atlassian.net /
+  docs.google.com) là chưa chạy — cần token Confluence + service-account Google để xác nhận cuối.

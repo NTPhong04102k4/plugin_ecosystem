@@ -14,13 +14,17 @@ import (
 	"time"
 )
 
+// confluenceBaseURL maps a site to its scheme+host. A package var so integration
+// tests can point it at a local httptest server; production always uses https.
+var confluenceBaseURL = func(site string) string { return "https://" + site }
+
 // confluenceFetch GETs the page body (ADF) and returns the raw response bytes.
 // Kept separate from parsing so the caller can hash raw bytes for the cache.
 func confluenceFetch(site, id, email, token string) ([]byte, error) {
 	if email == "" || token == "" {
 		return nil, fmt.Errorf("confluence needs an email and API token (set --email and the token env; see .skillrunner/fetch.json)")
 	}
-	url := "https://" + site + "/wiki/api/v2/pages/" + id + "?body-format=atlas_doc_format"
+	url := confluenceBaseURL(site) + "/wiki/api/v2/pages/" + id + "?body-format=atlas_doc_format"
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
 	req.SetBasicAuth(email, token)
 	req.Header.Set("Accept", "application/json")
