@@ -199,3 +199,21 @@ Auth chết / token sai / trang-sheet không có quyền → báo lỗi rõ + ex
   P3 nối `main.go` + `skill.json` → P4 doc này chuyển trạng thái "đã code" + ghi verify thật.
 - **Test:** dùng fixture (ADF JSON mẫu, CSV mẫu, SA key giả) — không gọi mạng/Google thật trong
   unit test; token flow test bằng TokenSource giả.
+
+## 15. Ghi chú hiện thực (đã code — cập nhật 2026-07-20)
+
+- **Files:** `internal/skill/fetch.go` (orchestrate + detect + cache + ghi markdown),
+  `confluence.go` (v2 API + ADF→markdown), `gsheet.go` (CSV export + parse), `gauth.go`
+  (token source SA/refresh), `fetchconfig.go` (`.skillrunner/fetch.json` + secret resolve).
+  `cmd/skillrunner/main.go` thêm case `fetch` + flags; `skill.json` cập nhật `spec-from-source`.
+- **Dep:** `golang.org/x/oauth2` v0.36.0 (direct) + `cloud.google.com/go/compute/metadata`
+  (indirect) — ngoại lệ có chủ đích so với zero-dep của `sr pull`.
+- **Cache key = hash RAW payload** (JSON page / CSV) như `sr pull` hash spec; nội dung không đổi
+  → tái dùng digest, bỏ normalize/ghi lại.
+- **An toàn Google:** phát hiện sheet private trả về HTML 200 (trang login) → báo lỗi thay vì ghi
+  rác (`looksLikeHTML`).
+- **Verify:** unit test phủ ADF→markdown (heading/bold/list/table + escape `|`), CSV→markdown
+  (ragged row padding, sheet trống), detect nguồn (confluence/gsheet + alias + lỗi), cache
+  round-trip, guard không overwrite file lạ, token source (fake). Đường lỗi CLI đã chạy thật
+  (unsupported URL, thiếu page id, thiếu token). **Happy-path qua mạng cần credential thật** →
+  chưa chạy trong CI offline; sẽ verify khi có token Confluence + service-account Google.
