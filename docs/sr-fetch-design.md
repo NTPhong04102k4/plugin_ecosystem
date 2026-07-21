@@ -192,8 +192,10 @@ Auth chết / token sai / trang-sheet không có quyền → báo lỗi rõ + ex
   sẽ có nhóm dep này (và các dep bắc cầu của oauth2).
 - **Confluence:** parse ADF JSON bằng stdlib `encoding/json`; chỉ cần các node `paragraph`,
   `table`/`tableRow`/`tableCell`, `heading`, `text` → markdown. Không cần lib HTML.
-- **Google:** ưu tiên CSV export (đơn giản, đủ cho testcase 1 tab); Sheets API v4 chỉ dùng khi
-  cần nhiều range/tab.
+- **Google:** mặc định CSV export (đơn giản, đọc được sheet link-shared, đủ cho 1 tab);
+  `--range`/`--all-tabs` chuyển sang **Sheets API v4** (`gsheet_v4.go`): đọc metadata (title +
+  tên tab) rồi `values:batchGet` cho nhiều tab/range. V4 cần Bearer (service-account/refresh)
+  hoặc `google.apiKeyEnv` (sheet public) — v4 từ chối request ẩn danh.
 - **Slug hoá** tiêu đề → tên file (bỏ dấu, kebab-case) cho `--out` mặc định.
 - **Phasing:** P1 Confluence + config/secret loader → P2 Google (`gauth.go` SA+refresh, CSV) →
   P3 nối `main.go` + `skill.json` → P4 doc này chuyển trạng thái "đã code" + ghi verify thật.
@@ -220,5 +222,13 @@ Auth chết / token sai / trang-sheet không có quyền → báo lỗi rõ + ex
   Confluence (Basic auth đúng → ADF parse → ghi `docs/specs/*.md` có header → digest sections →
   cache hit lần 2, server bị gọi cả 2 lần), Google Sheet link-shared (CSV → bảng markdown +
   digest table), và alias trong config. Base-URL được inject qua `confluenceBaseURL` /
-  `gsheetExportBase` (mặc định là host thật). **Chỉ còn phần chạm host thật** (atlassian.net /
-  docs.google.com) là chưa chạy — cần token Confluence + service-account Google để xác nhận cuối.
+  `gsheetExportBase` / `gsheetV4Base` (mặc định là host thật).
+- **Verify host thật (2026-07-21):** cả hai nguồn đã kéo thật OK.
+  - Google Sheet CSV (link-shared): sheet testcase "Danh mục Khoa khám bệnh" 77 dòng, bảng đúng.
+  - Confluence v2 (Basic auth email+token): trang "DANH MỤC KHOA KHÁM BỆNH" → ADF→markdown 66
+    dòng, 11 sections, 4 bảng trích đúng, giữ bold/list/heading.
+  - Config + alias: `--from <alias>` tự đọc email/tokenEnv từ `.skillrunner/fetch.json` chạy đúng.
+  - Sheets API v4 (`--range`/`--all-tabs`) verify qua mock (API-key path); host thật chờ khi cần
+    nhiều tab.
+  - Bài học: Confluence Basic auth phải dùng đúng email tài khoản Atlassian **sở hữu token**
+    (email khác → 403 "cannot access Confluence", không phải 401).
