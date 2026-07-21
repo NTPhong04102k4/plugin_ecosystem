@@ -74,10 +74,12 @@ func main() {
 	fs.BoolVar(&pullNoCache, "no-cache", false, "pull/fetch: ignore cached digest and regenerate")
 	// fetch-only flags (reuses --from/--out/--no-cache above; ignored by other commands)
 	var fetchEmail, fetchTokenEnv, fetchRange, fetchGid string
+	var fetchAllTabs bool
 	fs.StringVar(&fetchEmail, "email", "", "fetch: Confluence Basic-auth email (default: config)")
 	fs.StringVar(&fetchTokenEnv, "token-env", "", "fetch: env var holding the token/secret (default: per-source)")
-	fs.StringVar(&fetchRange, "range", "", "fetch: Google Sheet A1 range (e.g. Sheet1!A1:H)")
-	fs.StringVar(&fetchGid, "gid", "", "fetch: Google Sheet tab id (default: #gid= in the URL)")
+	fs.StringVar(&fetchRange, "range", "", "fetch: Google Sheet A1 range via Sheets API v4 (e.g. Sheet1!A1:H)")
+	fs.StringVar(&fetchGid, "gid", "", "fetch: Google Sheet tab id for the CSV path (default: #gid= in the URL)")
+	fs.BoolVar(&fetchAllTabs, "all-tabs", false, "fetch: pull every tab via Sheets API v4 (batchGet)")
 	// Go's flag package stops at the first positional, so flags placed AFTER the
 	// skill name would be ignored. Interleave parsing to accept flags anywhere.
 	rest := parseInterleaved(fs, os.Args[2:])
@@ -253,6 +255,7 @@ func main() {
 			TokenEnv:   fetchTokenEnv,
 			Range:      fetchRange,
 			Gid:        fetchGid,
+			AllTabs:    fetchAllTabs,
 			ProjectDir: detectDir,
 			NoCache:    pullNoCache,
 		})

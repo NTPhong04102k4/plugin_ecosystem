@@ -32,6 +32,7 @@ type ConfluenceConfig struct {
 type GoogleConfig struct {
 	SAKeyFile string         `json:"saKeyFile,omitempty"` // path to a service-account JSON key
 	Refresh   *GoogleRefresh `json:"refresh,omitempty"`   // OAuth refresh-token credentials
+	ApiKeyEnv string         `json:"apiKeyEnv,omitempty"` // env var holding a Sheets API key (public sheets, v4)
 }
 
 // GoogleRefresh names the env vars holding the OAuth client id/secret + refresh

@@ -25,8 +25,9 @@ type FetchOptions struct {
 	Out        string // markdown output path (default docs/specs/<slug>.md)
 	Email      string // Confluence Basic-auth email (flag override)
 	TokenEnv   string // env var name holding the token/secret (flag override)
-	Range      string // Google: A1 range (reserved for the values API path)
+	Range      string // Google: A1 range -> Sheets API v4 values path (e.g. Sheet1!A1:H)
 	Gid        string // Google: tab id override (default: #gid= in the URL)
+	AllTabs    bool   // Google: fetch every tab via Sheets API v4 (batchGet)
 	ProjectDir string // target project (config + cache + output live under it)
 	NoCache    bool   // ignore any cached digest and re-fetch
 }
@@ -96,7 +97,7 @@ func Fetch(opts FetchOptions) (*FetchDigest, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	contentHash := fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
+	contentHash := fmt.Sprintf("sha256:%x", sha256.Sum256(raw.bytes))
 
 	if !opts.NoCache {
 		if cached, ok := readCachedFetch(cachePath, contentHash); ok {
@@ -111,16 +112,25 @@ func Fetch(opts FetchOptions) (*FetchDigest, string, error) {
 	)
 	switch src.kind {
 	case "confluence":
-		title, markdown, tables, sections, err = confluenceParse(raw)
+		title, markdown, tables, sections, err = confluenceParse(raw.bytes)
 	case "gsheet":
-		title = "Sheet " + src.id
-		if src.gid != "" {
-			title += " (gid " + src.gid + ")"
-		}
-		var t DigestTable
-		markdown, t, err = gsheetParse(raw, title)
-		if t.Rows > 0 || len(t.Headers) > 0 {
-			tables = []DigestTable{t}
+		switch raw.mode {
+		case "v4":
+			title = raw.title
+			if title == "" {
+				title = "Sheet " + src.id
+			}
+			markdown, tables, err = gsheetV4Parse(raw.bytes, title)
+		default: // "csv"
+			title = "Sheet " + src.id
+			if src.gid != "" {
+				title += " (gid " + src.gid + ")"
+			}
+			var t DigestTable
+			markdown, t, err = gsheetParse(raw.bytes, title)
+			if t.Rows > 0 || len(t.Headers) > 0 {
+				tables = []DigestTable{t}
+			}
 		}
 	}
 	if err != nil {
@@ -188,8 +198,16 @@ func detectSource(raw string) (fetchSource, error) {
 	return fetchSource{}, fmt.Errorf("unsupported source %q — expected a *.atlassian.net/wiki/.../pages/<id> or docs.google.com/spreadsheets/d/<id> URL", raw)
 }
 
+// rawResult is one fetched payload plus metadata parse needs but can't derive
+// from the bytes alone (the gsheet mode, and the v4 spreadsheet title).
+type rawResult struct {
+	bytes []byte
+	mode  string // gsheet: "csv" | "v4"
+	title string // gsheet v4: spreadsheet title
+}
+
 // fetchRaw dispatches to the per-source fetcher, resolving secrets flag>env>config.
-func fetchRaw(src fetchSource, opts FetchOptions, cfg *FetchConfig) ([]byte, error) {
+func fetchRaw(src fetchSource, opts FetchOptions, cfg *FetchConfig) (rawResult, error) {
 	switch src.kind {
 	case "confluence":
 		var cc ConfluenceConfig
@@ -199,17 +217,28 @@ func fetchRaw(src fetchSource, opts FetchOptions, cfg *FetchConfig) ([]byte, err
 		email := firstNonEmpty(opts.Email, cc.Email)
 		tokenEnv := firstNonEmpty(opts.TokenEnv, cc.TokenEnv, "CONFLUENCE_TOKEN")
 		token := os.Getenv(tokenEnv)
-		return confluenceFetch(src.site, src.id, email, token)
+		b, err := confluenceFetch(src.site, src.id, email, token)
+		return rawResult{bytes: b}, err
 
 	case "gsheet":
+		// --range or --all-tabs => Sheets API v4 (multi-tab/range); else CSV export.
+		if opts.Range != "" || opts.AllTabs {
+			bearer, apiKey, err := googleV4Auth(cfg.Google)
+			if err != nil {
+				return rawResult{}, err
+			}
+			b, title, err := gsheetV4Fetch(src.id, opts.Range, opts.AllTabs, bearer, apiKey)
+			return rawResult{bytes: b, mode: "v4", title: title}, err
+		}
 		gid := firstNonEmpty(opts.Gid, src.gid)
 		token, err := resolveGoogleToken(cfg.Google)
 		if err != nil {
-			return nil, err
+			return rawResult{}, err
 		}
-		return gsheetFetch(src.id, gid, token)
+		b, err := gsheetFetch(src.id, gid, token)
+		return rawResult{bytes: b, mode: "csv"}, err
 	}
-	return nil, fmt.Errorf("unknown source kind %q", src.kind)
+	return rawResult{}, fmt.Errorf("unknown source kind %q", src.kind)
 }
 
 // resolveGoogleToken mints an access token when Google auth is configured;
@@ -223,6 +252,23 @@ func resolveGoogleToken(cfg *GoogleConfig) (string, error) {
 		return "", err
 	}
 	return googleAccessToken(ts)
+}
+
+// googleV4Auth resolves credentials for the Sheets API v4 path: a Bearer token
+// (service-account/refresh) and/or an API key (public sheets). At least one is
+// required — v4 rejects anonymous requests.
+func googleV4Auth(cfg *GoogleConfig) (bearer, apiKey string, err error) {
+	bearer, err = resolveGoogleToken(cfg)
+	if err != nil {
+		return "", "", err
+	}
+	if cfg != nil && cfg.ApiKeyEnv != "" {
+		apiKey = os.Getenv(cfg.ApiKeyEnv)
+	}
+	if bearer == "" && apiKey == "" {
+		return "", "", fmt.Errorf("Sheets API v4 (--range/--all-tabs) needs google auth: set google.saKeyFile or google.refresh (or google.apiKeyEnv for a public sheet) in .skillrunner/fetch.json")
+	}
+	return bearer, apiKey, nil
 }
 
 // --- cache (mirrors sr pull) ---

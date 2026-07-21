@@ -52,6 +52,43 @@ func TestGsheetParseEmpty(t *testing.T) {
 	}
 }
 
+func TestGsheetV4Parse(t *testing.T) {
+	raw := []byte(`{"valueRanges":[
+		{"range":"Khoa!A1:B3","values":[["ID","Tên"],["1","Nội"],["2","Ngoại"]]},
+		{"range":"'Cấu hình'!A1:A1","values":[["X"]]}
+	]}`)
+	md, tables, err := gsheetV4Parse(raw, "Danh mục")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"# Danh mục",
+		"## Khoa",
+		"| ID | Tên |",
+		"| 1 | Nội |",
+		"## Cấu hình", // quoted tab name unwrapped
+	} {
+		if !strings.Contains(md, want) {
+			t.Errorf("missing %q\n---\n%s", want, md)
+		}
+	}
+	if len(tables) != 2 || tables[0].Name != "Khoa" || tables[0].Rows != 2 {
+		t.Errorf("tables = %+v", tables)
+	}
+}
+
+func TestTabName(t *testing.T) {
+	for in, want := range map[string]string{
+		"Khoa!A1:C3":     "Khoa",
+		"'Cấu hình'!A1":  "Cấu hình",
+		"Sheet1":         "Sheet1",
+	} {
+		if got := tabName(in); got != want {
+			t.Errorf("tabName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestLooksLikeHTML(t *testing.T) {
 	if !looksLikeHTML([]byte("<!DOCTYPE html><html>...")) {
 		t.Error("should detect html doctype")

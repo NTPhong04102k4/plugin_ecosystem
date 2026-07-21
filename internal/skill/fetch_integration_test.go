@@ -123,6 +123,64 @@ func TestFetchGsheetEndToEnd(t *testing.T) {
 	}
 }
 
+// TestFetchGsheetV4AllTabs drives the Sheets API v4 path (via the API-key auth,
+// easy to inject): metadata (title+tabs) -> values:batchGet -> per-tab markdown
+// sections + digest tables.
+func TestFetchGsheetV4AllTabs(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("key") != "test-key" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/values:batchGet"):
+			w.Write([]byte(`{"valueRanges":[
+				{"range":"Khoa!A1:B2","values":[["ID","Tên"],["1","Nội"]]},
+				{"range":"Phòng!A1:A2","values":[["P"],["P1"]]}
+			]}`))
+		case strings.Contains(r.URL.Path, "/v4/spreadsheets/"):
+			w.Write([]byte(`{"properties":{"title":"Danh mục KHOA"},"sheets":[
+				{"properties":{"sheetId":0,"title":"Khoa"}},
+				{"properties":{"sheetId":1,"title":"Phòng"}}
+			]}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	orig := gsheetV4Base
+	gsheetV4Base = srv.URL
+	defer func() { gsheetV4Base = orig }()
+
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, ".skillrunner"), 0o755)
+	os.WriteFile(filepath.Join(dir, ".skillrunner", "fetch.json"),
+		[]byte(`{"google":{"apiKeyEnv":"GKEY"}}`), 0o644)
+	t.Setenv("GKEY", "test-key")
+
+	d, _, err := Fetch(FetchOptions{
+		From:       "https://docs.google.com/spreadsheets/d/SHEETV4/edit",
+		AllTabs:    true,
+		ProjectDir: dir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Title != "Danh mục KHOA" || len(d.Tables) != 2 {
+		t.Fatalf("digest = %+v", d)
+	}
+	if d.Tables[0].Name != "Khoa" || d.Tables[1].Name != "Phòng" {
+		t.Errorf("tabs = %+v", d.Tables)
+	}
+	md, _ := os.ReadFile(filepath.Join(dir, d.File))
+	for _, want := range []string{"# Danh mục KHOA", "## Khoa", "| ID | Tên |", "## Phòng"} {
+		if !strings.Contains(string(md), want) {
+			t.Errorf("markdown missing %q\n%s", want, md)
+		}
+	}
+}
+
 // TestFetchAliasResolution: an alias in config resolves to a real URL before detect.
 func TestFetchAliasResolution(t *testing.T) {
 	csv := "A,B\n1,2\n"
