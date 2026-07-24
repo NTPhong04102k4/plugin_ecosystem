@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="sr-nonce" content="__NONCE__">
+<title>skillrunner · fetch UI</title>
+<style>
+  :root{--bg:#f7f8fa;--panel:#fff;--ink:#1b1f24;--mut:#6b7280;--line:#e5e7eb;--accent:#2563eb;--ok:#16a34a;--err:#dc2626;--chip:#eef2ff}
+  @media (prefers-color-scheme:dark){:root{--bg:#0e1116;--panel:#161b22;--ink:#e6edf3;--mut:#9aa4b2;--line:#2a313c;--accent:#4f8cff;--ok:#3fb950;--err:#f85149;--chip:#1c2333}}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:12px 18px;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:center;background:var(--panel);position:sticky;top:0;z-index:5}
+  header b{font-size:15px}
+  .repo{margin-left:auto;color:var(--mut);font-size:12px;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  nav{display:flex;gap:4px;padding:10px 18px 0}
+  nav button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;color:var(--mut);cursor:pointer;font-size:14px}
+  nav button.on{color:var(--ink);border-color:var(--accent)}
+  main{padding:18px;max-width:920px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+  h2{margin:0 0 12px;font-size:15px}
+  label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+  input,textarea,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
+  textarea{min-height:90px;resize:vertical;font-family:ui-monospace,monospace;font-size:13px}
+  button.act{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:8px 14px;cursor:pointer;font:inherit}
+  button.act.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+  button.sm{padding:4px 9px;font-size:12px;border-radius:6px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}
+  th{color:var(--mut);font-weight:600}
+  .chip{display:inline-block;background:var(--chip);border-radius:20px;padding:2px 9px;font-size:12px}
+  .ok{color:var(--ok)} .err{color:var(--err)} .mut{color:var(--mut)}
+  .browse{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+  .browse div{padding:7px 10px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;gap:8px}
+  .browse div:hover{background:var(--bg)}
+  .grow{flex:1}
+  .msg{padding:8px 10px;border-radius:7px;margin-top:10px;font-size:13px;display:none}
+  .msg.e{background:color-mix(in srgb,var(--err) 15%,transparent);color:var(--err);display:block}
+  .msg.s{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok);display:block}
+  code{font-family:ui-monospace,monospace;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <b>skillrunner · fetch</b>
+  <span class="mut" style="font-size:12px">web cục bộ · 0-token bridge</span>
+  <span class="repo" id="repoLabel">chưa chọn repo</span>
+</header>
+<nav>
+  <button data-tab="project" class="on">Project</button>
+  <button data-tab="tags">Tags</button>
+  <button data-tab="run">Run</button>
+</nav>
+<main>
+  <section id="tab-project">
+    <div class="card">
+      <h2>Chọn repo dự án</h2>
+      <div class="row"><input id="curPath" class="grow" readonly><button class="act sm" id="up">↑ lên</button><button class="act sm" id="pick">Chọn thư mục này</button></div>
+      <div class="browse" id="browse"></div>
+      <div class="msg" id="projMsg"></div>
+    </div>
+  </section>
+
+  <section id="tab-tags" hidden>
+    <div class="card">
+      <h2>Tags — vùng credential Confluence</h2>
+      <table id="tagTable"><thead><tr><th>Tag</th><th>Site</th><th>Gmail</th><th>Token</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h2>Thêm / cập nhật tag</h2>
+      <div class="row"><div class="grow"><label>Tên tag (vùng)</label><input id="tName" placeholder="X"></div>
+      <div class="grow"><label>Site</label><input id="tSite" placeholder="acme.atlassian.net"></div></div>
+      <div class="row"><div class="grow"><label>Gmail</label><input id="tEmail" placeholder="you@gmail.com"></div>
+      <div class="grow"><label>Token (để trống = giữ token cũ)</label><input id="tToken" type="password" placeholder="ATATT..."></div></div>
+      <div class="row" style="margin-top:12px"><button class="act" id="saveTag">Lưu tag</button></div>
+      <div class="msg" id="tagMsg"></div>
+    </div>
+  </section>
+
+  <section id="tab-run" hidden>
+    <div class="card">
+      <h2>Session — một tính năng</h2>
+      <div class="row"><div class="grow"><label>Tên session</label><input id="sName" placeholder="feature-khoa"></div>
+      <div style="min-width:160px"><label>Tag (vùng)</label><select id="sTag"></select></div>
+      <div><label>&nbsp;</label><select id="sPick"><option value="">— chọn session đã lưu —</option></select></div></div>
+      <label>Link Confluence (mỗi dòng 1 link)</label><textarea id="sConf"></textarea>
+      <label>Link Excel / Google Sheet (mỗi dòng 1 link)</label><textarea id="sSheet"></textarea>
+      <div class="row" style="margin-top:12px">
+        <button class="act" id="saveSes">Lưu session</button>
+        <button class="act" id="run">▶ Run</button>
+        <button class="act ghost" id="refresh">↻ Refresh (no-cache)</button>
+      </div>
+      <div class="msg" id="runMsg"></div>
+    </div>
+    <div class="card"><h2>Kết quả</h2><table id="resTable"><thead><tr><th>Link</th><th>Kết quả</th><th>File</th></tr></thead><tbody></tbody></table></div>
+    <div class="card"><h2>Lịch sử</h2><table id="histTable"><thead><tr><th>Lúc</th><th>Session</th><th>OK</th><th>Files</th></tr></thead><tbody></tbody></table></div>
+  </section>
+</main>
+<script>
+const NONCE=document.querySelector('meta[name=sr-nonce]').content;
+let REPO="", CWD="";
+const $=s=>document.querySelector(s);
+async function api(path,opts={}){
+  opts.headers=Object.assign({'X-SR-UI':NONCE,'Content-Type':'application/json'},opts.headers||{});
+  const r=await fetch(path,opts);
+  const t=await r.text();
+  let j={}; try{j=t?JSON.parse(t):{}}catch(e){}
+  if(!r.ok) throw new Error(j.error||('HTTP '+r.status));
+  return j;
+}
+function msg(el,text,ok){el.textContent=text;el.className='msg '+(ok?'s':'e');}
+function qs(dir){return '?dir='+encodeURIComponent(dir)}
+
+// tabs
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  ['project','tags','run'].forEach(t=>$('#tab-'+t).hidden=(t!==b.dataset.tab));
+  if(b.dataset.tab==='tags')loadConfig();
+  if(b.dataset.tab==='run')loadConfig();
+});
+
+// ---- project / file browser ----
+async function browse(path){
+  const j=await api('/api/browse?path='+encodeURIComponent(path||''));
+  CWD=j.path; $('#curPath').value=j.path;
+  const box=$('#browse'); box.innerHTML='';
+  j.entries.forEach(e=>{
+    const d=document.createElement('div');
+    d.innerHTML=(e.isGitRepo?'✓ ':'📁 ')+e.name;
+    d.onclick=()=>browse(j.path.replace(/\/$/,'')+'/'+e.name);
+    box.appendChild(d);
+  });
+  $('#up').dataset.parent=j.parent;
+}
+$('#up').onclick=()=>browse($('#up').dataset.parent);
+$('#pick').onclick=async()=>{REPO=CWD;$('#repoLabel').textContent=REPO;msg($('#projMsg'),'Đã chọn repo: '+REPO,true);};
+browse('');
+
+// ---- tags ----
+async function loadConfig(){
+  if(!REPO){return}
+  const c=await api('/api/config'+qs(REPO));
+  const tb=$('#tagTable tbody'); tb.innerHTML='';
+  const sel=$('#sTag'); sel.innerHTML='';
+  Object.entries(c.tags||{}).forEach(([name,t])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><b>${name}</b></td><td>${t.site||''}</td><td>${t.email||''}</td><td>${t.hasToken?'●●●':'<span class=err>trống</span>'}</td>`;
+    const td=document.createElement('td');
+    const chk=document.createElement('button');chk.className='act sm ghost';chk.textContent='Check';
+    chk.onclick=async()=>{try{const r=await api('/api/tags/'+encodeURIComponent(name)+'/check'+qs(REPO),{method:'POST'});chk.textContent='✓ '+r.accountEmail;chk.classList.remove('ghost')}catch(e){chk.textContent='✗';chk.style.color='var(--err)'}};
+    const del=document.createElement('button');del.className='act sm';del.style.marginLeft='6px';del.textContent='Xoá';
+    del.onclick=async()=>{await api('/api/tags/'+encodeURIComponent(name)+qs(REPO),{method:'DELETE'});loadConfig()};
+    td.append(chk,del);tr.appendChild(td);tb.appendChild(tr);
+    const o=document.createElement('option');o.value=name;o.textContent=name;sel.appendChild(o);
+  });
+  // sessions dropdown + history
+  const sp=$('#sPick');sp.innerHTML='<option value="">— chọn session đã lưu —</option>';
+  Object.keys(c.sessions||{}).forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sp.appendChild(o)});
+  window.__sessions=c.sessions||{};
+  const hb=$('#histTable tbody');hb.innerHTML='';
+  (c.history||[]).forEach(h=>{const tr=document.createElement('tr');tr.innerHTML=`<td class=mut>${h.at||''}</td><td>${h.session}</td><td>${h.ok?'<span class=ok>OK</span>':'<span class=err>lỗi</span>'}</td><td><code>${(h.files||[]).join('<br>')}</code></td>`;hb.appendChild(tr)});
+}
+$('#saveTag').onclick=async()=>{
+  if(!REPO)return msg($('#tagMsg'),'Chọn repo trước',false);
+  try{await api('/api/tags'+qs(REPO),{method:'POST',body:JSON.stringify({tag:$('#tName').value.trim(),site:$('#tSite').value.trim(),email:$('#tEmail').value.trim(),token:$('#tToken').value})});
+    $('#tToken').value='';msg($('#tagMsg'),'Đã lưu (token ghi mã hoá 0600, .gitignore tự thêm)',true);loadConfig();}
+  catch(e){msg($('#tagMsg'),e.message,false)}
+};
+$('#sPick').onchange=()=>{const s=window.__sessions[$('#sPick').value];if(!s)return;$('#sName').value=$('#sPick').value;$('#sTag').value=s.tag;$('#sConf').value=(s.confluence||[]).join('\n');$('#sSheet').value=(s.sheets||[]).join('\n')};
+function lines(el){return el.value.split('\n').map(x=>x.trim()).filter(Boolean)}
+$('#saveSes').onclick=async()=>{
+  if(!REPO)return msg($('#runMsg'),'Chọn repo trước',false);
+  try{await api('/api/sessions'+qs(REPO),{method:'POST',body:JSON.stringify({session:$('#sName').value.trim(),tag:$('#sTag').value,confluence:lines($('#sConf')),sheets:lines($('#sSheet'))})});
+    msg($('#runMsg'),'Đã lưu session',true);loadConfig();}catch(e){msg($('#runMsg'),e.message,false)}
+};
+async function doRun(path){
+  if(!REPO)return msg($('#runMsg'),'Chọn repo trước',false);
+  msg($('#runMsg'),'Đang chạy...',true);
+  try{
+    await $('#saveSes').onclick(); // save first
+    const r=await api(path+qs(REPO),{method:'POST',body:JSON.stringify({session:$('#sName').value.trim()})});
+    const tb=$('#resTable tbody');tb.innerHTML='';
+    r.results.forEach(x=>{const tr=document.createElement('tr');
+      tr.innerHTML=`<td><code>${x.url}</code></td><td>${x.ok?'<span class=ok>OK</span>':'<span class=err>'+(x.error||'')+'</span>'}</td><td><code>${x.item?x.item.file:''}</code></td>`;tb.appendChild(tr)});
+    msg($('#runMsg'),'Xong',true);loadConfig();
+  }catch(e){msg($('#runMsg'),e.message,false)}
+}
+$('#run').onclick=()=>doRun('/api/run');
+$('#refresh').onclick=()=>doRun('/api/refresh');
+</script>
+</body>
+</html>

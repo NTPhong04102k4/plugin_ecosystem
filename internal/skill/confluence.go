@@ -47,6 +47,38 @@ func confluenceFetch(site, id, email, token string) ([]byte, error) {
 	return io.ReadAll(res.Body)
 }
 
+// ConfluenceCheck validates Basic-auth creds against the site's current-user
+// endpoint, returning the authenticated account email. Used by `sr ui` to verify
+// a tag's gmail+token. A 403 here means the identity has no Confluence access
+// (often a wrong email for the token), distinct from a 401 bad credential.
+func ConfluenceCheck(site, email, token string) (string, error) {
+	if email == "" || token == "" {
+		return "", fmt.Errorf("need email and token")
+	}
+	url := confluenceBaseURL(site) + "/wiki/rest/api/user/current"
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	req.SetBasicAuth(email, token)
+	req.Header.Set("Accept", "application/json")
+	client := &http.Client{Timeout: 15 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	if res.StatusCode == http.StatusForbidden {
+		return "", fmt.Errorf("403 — email/token mismatch or no Confluence access on %s", site)
+	}
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("auth check got HTTP %d", res.StatusCode)
+	}
+	var u struct {
+		Email string `json:"email"`
+	}
+	body, _ := io.ReadAll(res.Body)
+	_ = json.Unmarshal(body, &u)
+	return u.Email, nil
+}
+
 // confluencePage is the shallow shape of a v2 page response.
 type confluencePage struct {
 	Title string `json:"title"`

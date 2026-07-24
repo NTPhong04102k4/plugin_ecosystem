@@ -10,11 +10,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/ghmsoft/skillrunner/internal/skill"
+	"github.com/ghmsoft/skillrunner/internal/uiserver"
 )
 
 const usage = `skillrunner — portable skill dispatcher for Claude
@@ -28,6 +30,8 @@ Usage:
   skillrunner apply-base               Copy the stack's base config files (eslint/linter/etc.) into the project
   skillrunner pull --tag <tag>         Bridge authswagger spec -> types.ts + react-query hook skeleton + digest (0 token)
   skillrunner fetch --from <url>       Bridge Confluence/Google Sheet (link+token) -> markdown + digest (0 token)
+  skillrunner ui [--port 7777]         Local web UI to manage credential tags/sessions and run fetch
+  skillrunner refresh --session <s>    Re-fetch (no-cache) every link of a saved session in this repo
   skillrunner ledger                   Show which skills have already been emitted in this project
   skillrunner validate                 Check that the manifest is well-formed
   skillrunner init                     Write a starter skill.json in the current dir
@@ -80,6 +84,11 @@ func main() {
 	fs.StringVar(&fetchRange, "range", "", "fetch: Google Sheet A1 range via Sheets API v4 (e.g. Sheet1!A1:H)")
 	fs.StringVar(&fetchGid, "gid", "", "fetch: Google Sheet tab id for the CSV path (default: #gid= in the URL)")
 	fs.BoolVar(&fetchAllTabs, "all-tabs", false, "fetch: pull every tab via Sheets API v4 (batchGet)")
+	// ui / refresh flags
+	var uiPort int
+	var fetchSession string
+	fs.IntVar(&uiPort, "port", 7777, "ui: localhost port")
+	fs.StringVar(&fetchSession, "session", "", "refresh: session name in this repo's ui.json")
 	// Go's flag package stops at the first positional, so flags placed AFTER the
 	// skill name would be ignored. Interleave parsing to accept flags anywhere.
 	rest := parseInterleaved(fs, os.Args[2:])
@@ -263,6 +272,34 @@ func main() {
 			fatal(err)
 		}
 		fmt.Println(digestJSON)
+
+	case "ui":
+		srv, err := uiserver.New()
+		if err != nil {
+			fatal(err)
+		}
+		addr := fmt.Sprintf("127.0.0.1:%d", uiPort)
+		fmt.Printf("skillrunner ui → http://%s  (Ctrl-C to stop)\n", addr)
+		httpSrv := &http.Server{Addr: addr, Handler: srv.Handler()}
+		if err := httpSrv.ListenAndServe(); err != nil {
+			fatal(err)
+		}
+
+	case "refresh":
+		if fetchSession == "" {
+			fatal(fmt.Errorf("refresh requires --session <name>"))
+		}
+		results, err := uiserver.RunSession(detectDir, fetchSession, true, time.Now())
+		if err != nil {
+			fatal(err)
+		}
+		for _, r := range results {
+			if r.OK {
+				fmt.Printf("✓ %s → %s\n", r.URL, r.Item.File)
+			} else {
+				fmt.Printf("✗ %s: %s\n", r.URL, r.Error)
+			}
+		}
 
 	case "serve":
 		// Run as an MCP server over stdio. packDir is where packs/ live (next to

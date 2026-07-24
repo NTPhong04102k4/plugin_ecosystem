@@ -24,6 +24,7 @@ type FetchOptions struct {
 	From       string // Confluence/Sheet URL, or an alias in config.sources (required)
 	Out        string // markdown output path (default docs/specs/<slug>.md)
 	Email      string // Confluence Basic-auth email (flag override)
+	Token      string // Confluence token passed directly (wins over TokenEnv/env); used by `sr ui`
 	TokenEnv   string // env var name holding the token/secret (flag override)
 	Range      string // Google: A1 range -> Sheets API v4 values path (e.g. Sheet1!A1:H)
 	Gid        string // Google: tab id override (default: #gid= in the URL)
@@ -216,7 +217,8 @@ func fetchRaw(src fetchSource, opts FetchOptions, cfg *FetchConfig) (rawResult, 
 		}
 		email := firstNonEmpty(opts.Email, cc.Email)
 		tokenEnv := firstNonEmpty(opts.TokenEnv, cc.TokenEnv, "CONFLUENCE_TOKEN")
-		token := os.Getenv(tokenEnv)
+		// Precedence: direct token (sr ui) > env var > config.
+		token := firstNonEmpty(opts.Token, os.Getenv(tokenEnv))
 		b, err := confluenceFetch(src.site, src.id, email, token)
 		return rawResult{bytes: b}, err
 

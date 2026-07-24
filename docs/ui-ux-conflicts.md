@@ -29,6 +29,10 @@ Không có bên nào "mặc định thắng". Đề xuất chỉ là gợi ý đ
 - **Mockup/ảnh đính kèm** chỉ định control, màu, khoảng cách cụ thể trái với `design-system`.
 - **Spec bỏ sót** một trục mà rule bắt buộc (quyền/CASL, dark mode, đa brand, accessibility) →
   không phải "mâu thuẫn trực diện" nhưng là **coverage gap**, cũng phải nêu.
+- **Thiết kế đòi component/thư viện** chưa có trong bộ đang áp dụng, hoặc dùng sai props/variant
+  của component thật (§3.6).
+- **Hai nguồn cùng một bộ test case lệch nhau** (vd file CSV vs link Google Sheet) → chính nó là
+  một xung đột, phải nêu để chọn nguồn chuẩn (§3.6 F4).
 
 ## 3. Danh mục loại xung đột
 
@@ -73,12 +77,34 @@ Bám sát rule hiện có trong `packs/react.json`, `packs/flutter.json`, `packs
 | E2 | (flutter) **đa brand** (ThaiThinh/NeoMedic); (rn) **light/dark** theo `useColorScheme` | Spec chỉ mô tả 1 theme/brand | Nêu thiếu ca cho brand/theme còn lại; không tự bịa hành vi. |
 | E3 | (rn) touch target **≥ 44pt** + `accessibilityLabel` | Mockup icon nhỏ hơn, không nói accessibility | Giữ 44pt + label; nêu chênh so với mockup. |
 
+### 3.6. Components & thư viện áp dụng
+
+Đối chiếu thiết kế/spec với **bộ components + thư viện thật** của dự án (đọc source, không sửa).
+
+| # | Hiện trạng repo | Điều spec/mockup yêu cầu | Đề xuất mặc định |
+|---|-----------------|--------------------------|------------------|
+| F1 | Bộ components nội bộ hiện có | Thiết kế đòi component **chưa tồn tại** | Nêu để bổ sung component; không tự vẽ lại rời rạc/trùng lặp. |
+| F2 | Danh sách thư viện đang áp dụng | Cần behavior lib **không hỗ trợ**, hoặc cần lib mới chưa có | Nêu; chờ người quyết có thêm/đổi lib không (không tự thêm dependency). |
+| F3 | API/props/variant thật của component | Mockup dùng **sai props/variant** so với component | Map về variant đúng; nêu nếu thiếu variant. |
+| F4 | Nguồn test case (CSV **và** Google Sheet) | Hai bản **lệch nhau** | Chính nó là xung đột — nêu để chọn nguồn chuẩn, không tự chọn. |
+
+### 3.7. Chấm severity & confidence (khi lập báo cáo)
+
+Mỗi xung đột gắn 2 trục để người quyết ưu tiên đúng:
+
+- **Severity:** 🔴 High (sai chức năng / vi phạm rule bắt buộc / test sẽ fail) · 🟠 Medium (lệch
+  đáng kể nhưng không chặn: coverage gap, wording, variant) · 🟡 Low (khác biệt nhỏ / có thể chủ ý).
+- **Confidence:** Chắc (trích dẫn rõ 2 bên) · Vừa (gián tiếp, cần xác nhận ngữ cảnh) · Thấp (thiếu
+  dữ liệu / ảnh mờ → ghi "insufficient evidence").
+- **Không** đẩy severity lên khi confidence thấp. Sắp xếp báo cáo High→Low, cùng mức thì confidence cao trước.
+
 ## 4. Mẫu ghi nhận một xung đột (dùng khi STOP báo người quyết)
 
 ```
 ### Xung đột #<n> — <tiêu đề ngắn>
-- Loại: <mã ở §3, vd A1 / D1>
-- Nguồn spec: <link Confluence / mã testcase>
+- Loại: <mã ở §3, vd A1 / D1 / F1>
+- Severity/Confidence: <🔴/🟠/🟡> / <Chắc/Vừa/Thấp>   (§3.7)
+- Nguồn spec: <link Confluence / mã testcase / ô Excel / vùng ảnh>
 - Rule UI/UX: <trích rule từ pack + tên pack>
 - Spec/testcase yêu cầu: <trích nguyên văn>
 - Ảnh hưởng: <màn hình/flow nào>
