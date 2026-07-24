@@ -51,7 +51,7 @@
     // ---- Core skills: generic, identical across every stack ----
 
     "plan-feature": {
-      "description": "Turn a feature request into a plan + goals for the user to decide.",
+      "description": "Turn a feature request into a reviewable plan + measurable goals — no code yet. Use when the user wants an approach scoped/designed before implementing, weighs options, or asks 'plan this / how would you build X / what's the approach'. Keywords: plan, scope, approach, design, goals, options, before coding.",
       "goal": "Produce a reviewable plan; do NOT write code yet.",
       "appliesRules": ["working-policy"],
       "requiresApproval": true,
@@ -67,7 +67,7 @@
     },
 
     "spec-from-source": {
-      "description": "Turn a Jira/Confluence issue, a Google Sheet, an OpenAPI/Swagger file, or an authenticated OpenAPI endpoint (e.g. an authswagger proxy URL) into a structured spec.",
+      "description": "Turn a Jira/Confluence issue, a Google Sheet, an OpenAPI/Swagger file, or an authenticated OpenAPI endpoint (e.g. an authswagger proxy URL) into a structured spec. Use when the user points at such a source and wants requirements / acceptance criteria / data models / endpoints / flow extracted before coding. Keywords: spec, requirements, acceptance criteria, Jira, Confluence, Google Sheet, Swagger, OpenAPI, import spec, endpoint.",
       "goal": "A clear spec (requirements, acceptance criteria, models, endpoints, flow) before coding.",
       "appliesRules": ["working-policy"],
       "requiresApproval": true,
@@ -88,7 +88,7 @@
     },
 
     "check-conflicts": {
-      "description": "Cross-check sources (test cases from Excel/CSV/Google Sheet, spec from Confluence/MD, mockup images, and the applied components/libraries) against the stack's UI/UX rules and surface CONFLICTS for the user to decide. Read-only: never writes to Jira/Confluence, never edits code.",
+      "description": "Cross-check sources (test cases from Excel/CSV/Google Sheet, spec from Confluence/MD, mockup images, and the applied components/libraries) against the stack's UI/UX rules and surface CONFLICTS for the user to decide. Use when the user has multiple sources of truth (tests vs spec vs mockup vs code) and wants contradictions / coverage gaps found before building. Read-only: never writes to Jira/Confluence, never edits code. Keywords: conflict, cross-check, test cases, spec vs mockup, coverage gap, UI/UX rules, discrepancy.",
       "goal": "A conflict report (rule vs source, with verbatim quotes + severity + proposed options) — STOP for the user to choose; nothing applied.",
       "appliesRules": ["working-policy", "project-profile", "design-system", "conventions"],
       "requiresApproval": true,
@@ -111,7 +111,7 @@
     },
 
     "commit": {
-      "description": "Split the working changes into per-module commits with Conventional Commit messages tagged by a Jira ref.",
+      "description": "Split the working changes into per-module commits with Conventional Commit messages tagged by a Jira ref. Use when the user is ready to commit, wants commit messages drafted, or says 'commit this / write the commit / group my changes'. Proposes text first; commits only after confirmation; never pushes. Keywords: commit, git commit, commit message, conventional commit, Jira ref, stage changes.",
       "goal": "Reviewable, module-scoped commits in the `ref-<n>: <type> - ...` format — only after the user confirms.",
       "appliesRules": ["working-policy", "commit-format"],
       "inputs": ["The Jira ticket number(s) for the work (ask if unknown)"],
@@ -128,7 +128,7 @@
     },
 
     "refactor": {
-      "description": "Improve a component/module for clarity and reuse WITHOUT changing behavior.",
+      "description": "Improve a component/module for clarity and reuse WITHOUT changing behavior. Use when the user says clean up / tidy / simplify / dedupe / extract / reduce nesting on existing code and behavior must stay identical. Keywords: refactor, clean up, tidy, simplify, dedupe, DRY, extract, reduce nesting, no behavior change.",
       "goal": "Cleaner code, identical behavior, minimal diff.",
       "appliesRules": ["working-policy", "conventions", "lint"],
       "inputs": ["The target file(s)"],
@@ -142,7 +142,7 @@
     },
 
     "explain-lib": {
-      "description": "Explain how THIS project actually uses a given library (no invented APIs).",
+      "description": "Explain how THIS project actually uses a given library (no invented APIs). Use when the user asks how X is used here / where is X used / what's the pattern for X / how do we do X in this repo — grounded in real call sites, not generic docs. Keywords: how do we use, explain library, usage pattern, where is X used, real call sites.",
       "goal": "Accurate what/where/pattern/pitfalls, grounded in real usage.",
       "appliesRules": ["working-policy", "library-docs"],
       "inputs": ["The library name"],
@@ -156,7 +156,7 @@
     },
 
     "check-diff": {
-      "description": "Review the current git diff against the stack's conventions.",
+      "description": "Review the current git diff against the stack's conventions. Use when the user wants pending changes checked before committing, or says 'review my changes / check my diff / did I follow conventions / lint check'. Reports file:line violations + runs the linter. Keywords: review diff, check changes, convention check, lint, pre-commit review, code review.",
       "goal": "Report convention violations with file:line, then run the linter.",
       "appliesRules": ["working-policy", "conventions", "lint"],
       "instructions": [
@@ -169,7 +169,7 @@
     },
 
     "learn-project": {
-      "description": "Deep-dive a project ONCE and cache its architecture in docs/project-profile.md (reused later, refreshed only on explicit update).",
+      "description": "Deep-dive a project ONCE and cache its architecture in docs/project-profile.md (reused later, refreshed only on explicit update). Use as the FIRST task in an unfamiliar project, or when the user asks to understand / map / onboard the codebase and no project-profile.md exists yet. Keywords: learn project, onboard, understand codebase, map architecture, first task, project profile, get up to speed.",
       "goal": "A reusable profile: framework, language, architecture, flows, config, and a catalog of reusable components with paths.",
       "appliesRules": ["working-policy", "project-profile", "architecture", "conventions", "design-system", "library-docs"],
       "inputs": ["The project directory (stack is auto-detected)"],
@@ -185,7 +185,7 @@
     },
 
     "update-module-registry": {
-      "description": "Create or update the project's module registry (docs/module-registry.md).",
+      "description": "Create or update the project's module registry (docs/module-registry.md). Use after touching a module's files/routes, or when the user asks to record / update what a module contains so future work can look it up. Keywords: module registry, record module, update registry, module map, files, routes.",
       "goal": "Keep an accurate map of module -> purpose, files, and routes for future lookup.",
       "appliesRules": ["working-policy", "module-registry"],
       "inputs": ["The module that was touched and the files/routes added or changed"],
@@ -202,7 +202,7 @@
     // ---- Orchestration: the end-to-end feature delivery workflow ----
 
     "deliver-feature": {
-      "description": "Deliver a Jira feature end to end: locate module -> plan -> goal -> code -> check -> clean -> verify -> commit.",
+      "description": "Deliver a Jira feature end to end: locate module -> plan -> goal -> code -> check -> clean -> verify -> commit. Use when the user gives a Jira task + description and wants it implemented start to finish; the orchestrator that chains learn-project, plan-feature, check-diff and commit. Keywords: deliver feature, implement ticket, Jira task, end to end, build the feature, ship it.",
       "goal": "A verified, convention-clean feature with the module registry updated and a confirmed commit (not pushed).",
       "appliesRules": ["working-policy", "project-profile", "module-registry", "commit-format", "architecture", "conventions", "design-system", "lint"],
       "inputs": ["The Jira task code", "The problem description"],
@@ -224,7 +224,7 @@
     // ---- Stack-parametrized skills: one intent, content from the pack ----
 
     "scaffold-data": {
-      "description": "Build the data layer for an API call following the stack's architecture.",
+      "description": "Build the data layer for an API call following the stack's architecture. Use when the user wants an endpoint integrated — models/DTOs + service/repository/provider + wiring — but NOT UI. Keywords: data layer, API call, integrate endpoint, model, DTO, service, repository, provider, fetch data.",
       "goal": "Types/models + service/provider + wiring, per the pack's templates.",
       "appliesRules": ["working-policy", "project-profile", "technical", "architecture", "conventions", "templates", "library-docs"],
       "inputs": ["Endpoint, method, request/response shape (ask if unknown)"],
@@ -239,7 +239,7 @@
     },
 
     "scaffold-screen": {
-      "description": "Scaffold a new screen/feature following the stack's architecture.",
+      "description": "Scaffold a new screen/feature following the stack's architecture. Use when the user wants a new page/screen created (list / detail / form / dialog) split into the stack's layers and wired into routing. Keywords: new screen, new page, scaffold feature, list screen, detail screen, form, dialog, route.",
       "goal": "A screen split into the pack's layers, wired into routing.",
       "appliesRules": ["working-policy", "project-profile", "architecture", "conventions", "templates"],
       "inputs": ["Screen name, purpose, whether it is a list/detail/form"],
@@ -253,7 +253,7 @@
     },
 
     "build-ui": {
-      "description": "Build or edit UI using the stack's design system and tokens.",
+      "description": "Build or edit UI using the stack's design system and tokens. Use when the user wants a component/layout built or changed, reusing shared components and semantic tokens (no hardcoded colors/spacing). Keywords: build UI, edit UI, component, layout, design system, design tokens, styling, restyle.",
       "goal": "UI that reuses shared components and obeys design tokens.",
       "appliesRules": ["working-policy", "project-profile", "conventions", "design-system"],
       "inputs": ["The UI to build/change and where it lives"],
@@ -267,7 +267,7 @@
     },
 
     "gen-routes": {
-      "description": "Generate/refresh route entries from the project's file structure.",
+      "description": "Generate/refresh route entries from the project's file structure. Use when the user wants routing regenerated or synced after adding/removing pages, following the stack's file-to-route convention. Keywords: routes, routing, generate routes, refresh routes, route map, register route.",
       "goal": "Deterministic file -> route mapping following the convention.",
       "appliesRules": ["working-policy", "architecture", "conventions"],
       "inputs": ["The routing convention and the pages/routes directory"],

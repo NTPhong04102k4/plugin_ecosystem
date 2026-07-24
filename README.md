@@ -8,6 +8,7 @@
 
 ## Mục lục
 - [Ý tưởng cốt lõi](#ý-tưởng-cốt-lõi)
+- [CLI tất định — không phải Claude "thực thi"](#cli-tất-định--không-phải-claude-thực-thi)
 - [Cài đặt](#cài-đặt)
 - [Dùng cho mọi project (wrapper `sr`)](#dùng-cho-mọi-project-wrapper-sr)
 - [Các lệnh](#các-lệnh)
@@ -42,6 +43,30 @@ Kiến trúc: **một skill dùng chung + một rule pack cho mỗi stack.**
 
 - Đổi project → **chỉ đổi pack**, skill giữ nguyên.
 - Skill viết **một lần**, dùng cho **mọi stack**. Thêm stack mới = thêm **một file** `packs/<stack>.json`.
+
+---
+
+## CLI tất định — không phải Claude "thực thi"
+
+**Điều quan trọng nhất cần nắm:** `sr` là một **CLI Go chạy cục bộ**. Nó chỉ **đọc JSON và IN ra text** — bên trong **không có model nào "hiểu" hay "thực thi" gì cả**. Cùng một input luôn cho **cùng một output**, không gọi LLM, không tốn token. Việc *thực thi* các marching orders đó là **bước sau, do Claude (hoặc bạn) làm** khi đọc output.
+
+```
+sr emit build-ui  ──►  (Go thuần, tất định)  ──►  in ra Markdown marching orders
+                                                   ▲ KHÔNG do model sinh ra
+Claude đọc output đó  ──►  đây mới là bước "thực thi"  (do model làm)
+```
+
+Nói cách khác: skillrunner trả lời **"nên làm gì, theo rule nào"**; nó **không** tự làm. Không sửa file, không suy luận, không chạy lệnh của project.
+
+### Trade-off có chủ đích: bỏ portability ⇄ được deterministic + 0-token
+
+skillrunner **cố tình KHÔNG** theo đặc tả Agent Skills (`SKILL.md` + YAML frontmatter mà claude.ai/API tự đọc). Đây là đánh đổi có ý thức:
+
+| Bỏ đi | Nhận lại |
+|-------|----------|
+| **Portability across surfaces.** Một Agent Skill (`SKILL.md`) chạy y hệt trên claude.ai / API / Claude Code vì nó là *dữ liệu để model tự đọc*. `sr` là *chương trình phải được thực thi* → cần **Bash hoặc MCP** để gọi binary, nên **chỉ chạy trong Claude Code / terminal (hoặc nơi có MCP)** — **KHÔNG chạy trên claude.ai / API**. | **Deterministic** — Go thuần, cùng input → cùng output, không "trôi" theo model. **0-token dispatch** — `list`/`emit` không tốn token LLM; token chỉ phát sinh khi Claude đọc output ở bước sau. **Debug bằng tay** — gõ `sr emit <skill>` ngay trong terminal để thấy *chính xác* Claude sẽ nhận gì. |
+
+> ⚠️ **Đừng kỳ vọng chạy trên claude.ai / API.** skillrunner là công cụ **dòng lệnh** cho môi trường có shell (Claude Code CLI / terminal), hoặc chạy dưới dạng MCP server. Nếu bạn cần một skill chạy đa nền tảng kể cả claude.ai/API, đó là mô hình Agent Skills (`SKILL.md`) — một hướng khác, không phải cái này.
 
 ---
 
