@@ -87,6 +87,29 @@
       "outputs": ["A structured spec document — no code changes"]
     },
 
+    "check-conflicts": {
+      "description": "Cross-check sources (test cases from Excel/CSV/Google Sheet, spec from Confluence/MD, mockup images, and the applied components/libraries) against the stack's UI/UX rules and surface CONFLICTS for the user to decide. Read-only: never writes to Jira/Confluence, never edits code.",
+      "goal": "A conflict report (rule vs source, with verbatim quotes + severity + proposed options) — STOP for the user to choose; nothing applied.",
+      "appliesRules": ["working-policy", "project-profile", "design-system", "conventions"],
+      "requiresApproval": true,
+      "inputs": [
+        "Test cases: a CSV file and/or a public Google Sheet link (may be both)",
+        "Spec: a Confluence link or an exported .md file",
+        "Optional: mockup/screenshot images (read via vision)",
+        "Optional: the components + libraries in use (code paths) — to check the design against real component APIs"
+      ],
+      "instructions": [
+        "For a Confluence page or Google Sheet, run `sr fetch --from <url|alias>` FIRST (0-token deterministic bridge → docs/specs/*.md); fall back to Atlassian MCP READ tools only if unavailable. READ-ONLY — never write anything back to Jira/Confluence.",
+        "Read every provided source: test cases (CSV / fetched sheet), the spec, any images (vision), and the applied components/libraries. If a source is missing, note the reduced coverage — do not guess.",
+        "Load the UI/UX rules to compare against: the `design-system` + `conventions` pack rules for the detected stack, plus docs/ui-ux-conflicts.md for the known conflict taxonomy (A1–E3).",
+        "Cross-check each source pair (test↔spec/AC, test/spec↔UI-UX rules, image↔spec, spec/image↔components/libraries, internal Excel duplicates, coverage gaps). Ground every finding in a verbatim quote from BOTH sides; if two supplied sources of the same thing (e.g. CSV vs Sheet) disagree, that is itself a conflict.",
+        "Rate each conflict by severity + confidence; do NOT inflate severity when evidence is weak — mark 'insufficient evidence' instead.",
+        "Report using the template in docs/ui-ux-conflicts.md §4: per conflict — type, sources, quotes, impact, a proposed default option, and the decision checkbox. Do NOT auto-decide; no side 'wins' by default.",
+        "Present the report and STOP for the user to choose. Apply nothing; write nothing to Jira/Confluence/code. If the user later picks resolutions, produce a draft they apply themselves."
+      ],
+      "outputs": ["A conflict report grouped by severity — no changes to any source, code, Jira, or Confluence"]
+    },
+
     "commit": {
       "description": "Split the working changes into per-module commits with Conventional Commit messages tagged by a Jira ref.",
       "goal": "Reviewable, module-scoped commits in the `ref-<n>: <type> - ...` format — only after the user confirms.",

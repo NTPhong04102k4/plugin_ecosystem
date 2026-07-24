@@ -90,4 +90,7 @@ Bám sát rule hiện có trong `packs/react.json`, `packs/flutter.json`, `packs
 
 - Rule nguồn: `packs/react.json`, `packs/flutter.json`, `packs/rn.json` (`design-system`, `conventions`).
 - Skill đọc spec: `spec-from-source` (Confluence/OpenAPI/authswagger) → xem `skill.json`.
+- **Skill dò xung đột: `check-conflicts`** — đối chiếu test case (CSV/Google Sheet) + spec
+  (Confluence/MD) + ảnh mockup + components/thư viện với rule UI/UX, xuất báo cáo theo §4 (read-only,
+  người quyết). Dùng taxonomy §3 làm bộ dò.
 - Quy trình dùng: khi `deliver-feature`/sinh testcase gặp mâu thuẫn, áp §1 (STOP + liệt kê §4).

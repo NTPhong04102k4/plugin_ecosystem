@@ -34,6 +34,7 @@ Not tied to a stack. Need no rule pack (or only a very thin one).
 |-------|---------|--------|
 | `plan-feature` | Request → plan + goals for the user to decide (no code) | working-policy + skillrunner |
 | `spec-from-source` | Jira/Confluence/Swagger → structured spec before coding | app-hrm `atlassian-spec`, `swagger-import` |
+| `check-conflicts` | Cross-check test cases / spec / mockups / components vs UI-UX rules → conflict report (read-only, user decides) | `docs/ui-ux-conflicts.md` |
 | `commit` | Split changes into per-module commits, present, confirm before committing | app-hrm `commit` |
 | `check-diff` | Review `git diff` against conventions → report `file:line` + run lint | ghm `check-convention`, app `clean-code` |
 | `refactor` | Improve within scope, do NOT change behavior | both `refactor`/`clean-component` |
