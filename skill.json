@@ -31,12 +31,14 @@
       "Each project keeps a module registry at `docs/module-registry.md`.",
       "For every module, record: Purpose (what it develops), Files (key files + their role), Routes (route path -> screen/handler).",
       "After delivering a feature, update the registry so future work can look up which files/routes belong to which module.",
-      "Keep entries stable and sorted; do not rewrite unrelated sections."
+      "Keep entries stable and sorted; do not rewrite unrelated sections.",
+      "If `skillrunner status` marks the registry STALE, its Files/Routes may name things that have since moved: confirm a path before trusting it, and bring the entries you touch back in line."
     ],
     "project-profile": [
       "The project's learned knowledge lives in `docs/project-profile.md`: framework + language (with versions), architecture/layers and how they connect, key flows (data/auth/navigation), important config/variables/tokens, and a catalog of reusable components/widgets WITH file paths.",
       "FIRST task in a project (profile missing): run `learn-project` to build it before implementing. Check with `skillrunner status`.",
       "If the profile EXISTS: reuse it — apply the cataloged components/patterns directly; do NOT re-scan the whole source to rediscover them.",
+      "If `skillrunner status` marks the profile STALE, the source moved on since it was written: still reuse it to orient, but treat EVERY path/symbol in it as unverified, and tell the user it is stale so they can decide whether to refresh.",
       "Rebuild the profile ONLY when the user explicitly asks to update it (re-run `learn-project`); never auto-refresh.",
       "Safety: trust the profile for orientation, but cheaply confirm a specific file/symbol still exists before relying on it."
     ]
