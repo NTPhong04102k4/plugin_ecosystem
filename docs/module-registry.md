@@ -5,8 +5,8 @@ where things live; update it after delivering a feature (`update-module-registry
 step 5 of `deliver-feature`). Keep entries sorted and stable.
 
 `sr status` reports whether this file has gone **`STALE`** (source files changed since it was last
-committed). Stale means the Files/Routes below may name things that have moved — confirm a path
-before trusting it.
+built or committed). Stale means the Files/Routes below may name things that have moved — confirm a
+path before trusting it.
 
 Template for a new entry:
 
@@ -65,8 +65,8 @@ Template for a new entry:
   - `detect.go` — `Detect` (file-signature stack detection, bounded recursive walk).
   - `emit.go` — `Manifest.Emit` / `EmitAll` / `List` (compose marching orders).
   - `assets.go` — `Pack.ApplyBase` + `ApplyResult` (copy the stack's base config into a project).
-  - `ledger.go` — `Ledger`/`LedgerRecord`, `LoadLedger`, `RecordEmit`, `Summary`, `StatusLine` (`.skillrunner/ledger.json`).
-  - `freshness.go` — `CheckFreshness`/`Freshness` (git-derived staleness of a cached doc; no marker, no state file).
+  - `ledger.go` — `Ledger`/`LedgerRecord`, `LoadLedger`, `RecordEmit` (stamps HEAD), `BuildCommit`, `Summary`, `StatusLine` (`.skillrunner/ledger.json`).
+  - `freshness.go` — `CheckFreshness`/`Freshness`/`driftSince` (git-derived staleness of a cached doc; measures the doc's own commit AND the ledger's build commit, keeps the worse).
   - `jsonc.go` — JSON-with-`//`-comments reader (`decodeJSONC`).
 - **Routes:** n/a (library).
 

@@ -388,7 +388,15 @@ func cacheLine(dir, label, rel, hint, refresh string) string {
 	// width — long labels ("Registry:") stay aligned with short ones ("Profile:").
 	prefix := fmt.Sprintf("%-8s ", label+":")
 
-	f := skill.CheckFreshness(dir, rel)
+	// refresh also names the skill that BUILDS this doc, so the ledger can say
+	// when it was last actually built — a truer baseline than the doc's own
+	// last commit, which a typo fix would reset.
+	build := ""
+	if l, err := skill.LoadLedger(dir); err == nil {
+		build = l.BuildCommit(refresh)
+	}
+
+	f := skill.CheckFreshness(dir, rel, build)
 	switch {
 	case !f.Known:
 		// Not a git repo, or the doc is not committed yet — no baseline to

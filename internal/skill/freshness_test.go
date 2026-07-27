@@ -130,7 +130,7 @@ func TestCheckFreshness(t *testing.T) {
 			dir := gitRepo(t)
 			tt.setup(t, dir)
 
-			got := CheckFreshness(dir, profile)
+			got := CheckFreshness(dir, profile, "")
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CheckFreshness() = %+v, want %+v", got, tt.want)
 			}
@@ -141,13 +141,117 @@ func TestCheckFreshness(t *testing.T) {
 	}
 }
 
+// head returns the current commit of the repo at dir.
+func head(t *testing.T, dir string) string {
+	t.Helper()
+	out, ok := gitOut(dir, "rev-parse", "HEAD")
+	if !ok {
+		t.Fatal("cannot read HEAD")
+	}
+	return out
+}
+
+// The whole point of the build-commit baseline: touching the doc must not be
+// able to launder away drift that really happened.
+func TestCheckFreshnessBuildCommitBeatsATypoFix(t *testing.T) {
+	dir := gitRepo(t)
+	write(t, dir, profile, "# profile")
+	commit(t, dir, "profile built here")
+	built := head(t, dir)
+
+	write(t, dir, "main.go", "package main")
+	commit(t, dir, "real source change")
+
+	// Someone fixes a typo in the profile and commits it. The doc's own last
+	// commit is now newer than the source change.
+	write(t, dir, profile, "# profile (typo fixed)")
+	commit(t, dir, "typo")
+
+	if got := CheckFreshness(dir, profile, ""); got.Stale() {
+		t.Fatalf("precondition: without a build commit this should read fresh, got %+v", got)
+	}
+
+	got := CheckFreshness(dir, profile, built)
+	want := Freshness{Known: true, Commits: 2, Files: 1}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("CheckFreshness(build) = %+v, want %+v", got, want)
+	}
+	if !got.Stale() {
+		t.Error("Stale() = false, want true — the source change must still count")
+	}
+}
+
+func TestCheckFreshnessBuildCommitNeverLoosensTheSignal(t *testing.T) {
+	tests := []struct {
+		name  string
+		build func(t *testing.T, dir string) string
+		want  Freshness
+	}{
+		{
+			// The doc was committed long after it was built, so its own history
+			// looks fresher than reality. The older baseline must win.
+			name:  "doc committed later than it was built",
+			build: func(t *testing.T, dir string) string { return head(t, dir) },
+			want:  Freshness{Known: true, Commits: 2, Files: 1},
+		},
+		{
+			// A ledger carried in from another repo names an unknown commit.
+			name:  "unresolvable build commit is ignored",
+			build: func(t *testing.T, dir string) string { return "0000000000000000000000000000000000000000" },
+			want:  Freshness{Known: true},
+		},
+		{
+			name:  "empty build commit falls back to the doc's history",
+			build: func(t *testing.T, dir string) string { return "" },
+			want:  Freshness{Known: true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := gitRepo(t)
+			write(t, dir, "seed.go", "package seed")
+			commit(t, dir, "seed")
+			build := tt.build(t, dir)
+
+			write(t, dir, "main.go", "package main")
+			commit(t, dir, "source change")
+			write(t, dir, profile, "# profile")
+			commit(t, dir, "commit the profile afterwards")
+
+			if got := CheckFreshness(dir, profile, build); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("CheckFreshness() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWorseThan(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b Freshness
+		want bool
+	}{
+		{"more source files wins", Freshness{Files: 3, Commits: 1}, Freshness{Files: 1, Commits: 9}, true},
+		{"fewer source files loses", Freshness{Files: 1, Commits: 9}, Freshness{Files: 3, Commits: 1}, false},
+		{"commits break a file tie", Freshness{Files: 2, Commits: 5}, Freshness{Files: 2, Commits: 4}, true},
+		{"identical is not worse", Freshness{Files: 2, Commits: 4}, Freshness{Files: 2, Commits: 4}, false},
+	}
+
+	for _, tt := range tests {
+		if got := tt.a.worseThan(tt.b); got != tt.want {
+			t.Errorf("%s: worseThan() = %v, want %v", tt.name, got, tt.want)
+		}
+	}
+}
+
 // A directory outside any repo must degrade to "unknown", not to an error or a
 // hang: staleness is advisory and `status` has to keep working without git.
 func TestCheckFreshnessOutsideGitRepo(t *testing.T) {
 	dir := t.TempDir()
 	write(t, dir, profile, "# profile")
 
-	got := CheckFreshness(dir, profile)
+	got := CheckFreshness(dir, profile, "")
 	if got.Known {
 		t.Errorf("CheckFreshness() outside a repo = %+v, want Known false", got)
 	}

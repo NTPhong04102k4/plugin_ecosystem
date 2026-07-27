@@ -38,10 +38,18 @@ const gitTimeout = 2 * time.Second
 // CheckFreshness measures the drift of the doc at rel (slash-separated, relative
 // to dir) against dir's git history.
 //
+// buildCommit, when non-empty, is HEAD as it stood when the doc was actually
+// built (see Ledger.BuildCommit). It exists because the doc's own last commit is
+// an optimistic baseline: fixing a typo in the doc resets it, and the doc then
+// reads fresh while its content is still old. Both candidates are measured and
+// the WORSE one wins, so the signal never claims fresher than the evidence
+// supports — and comparing drift (rather than commit order) needs no merge-base
+// and behaves sanely when the two commits sit on different branches.
+//
 // Every failure mode — git missing, dir not a repo, doc never committed, git
 // slow — collapses to a zero Freshness with Known false. Staleness is advisory:
 // not being able to compute it must never break `status`.
-func CheckFreshness(dir, rel string) Freshness {
+func CheckFreshness(dir, rel, buildCommit string) Freshness {
 	last, ok := gitOut(dir, "log", "-1", "--format=%H", "--", rel)
 	if !ok || last == "" {
 		// No commit touches rel: either dir is not a repo, or the doc was written
@@ -49,19 +57,47 @@ func CheckFreshness(dir, rel string) Freshness {
 		return Freshness{}
 	}
 
-	f := Freshness{Known: true}
-	if n, ok := gitOut(dir, "rev-list", "--count", last+"..HEAD"); ok {
-		if c, err := strconv.Atoi(n); err == nil {
-			f.Commits = c
+	f := driftSince(dir, last)
+	if buildCommit != "" && buildCommit != last {
+		if b := driftSince(dir, buildCommit); b.Known && b.worseThan(f) {
+			f = b
 		}
-	}
-	if out, ok := gitOut(dir, "diff", "--name-only", last+"..HEAD"); ok {
-		f.Files = countSourcePaths(strings.Split(out, "\n"))
 	}
 	if out, ok := gitOut(dir, "status", "--porcelain"); ok {
 		f.Dirty = countSourcePaths(porcelainPaths(out))
 	}
 	return f
+}
+
+// driftSince measures how far HEAD has moved past base. Dirty is left to the
+// caller: it describes the working tree, not the span, so it is the same
+// whichever baseline wins.
+func driftSince(dir, base string) Freshness {
+	n, ok := gitOut(dir, "rev-list", "--count", base+"..HEAD")
+	if !ok {
+		// base is not a commit this repo can resolve (rewritten history, a
+		// ledger copied in from elsewhere) — no usable measurement.
+		return Freshness{}
+	}
+
+	f := Freshness{Known: true}
+	if c, err := strconv.Atoi(n); err == nil {
+		f.Commits = c
+	}
+	if out, ok := gitOut(dir, "diff", "--name-only", base+"..HEAD"); ok {
+		f.Files = countSourcePaths(strings.Split(out, "\n"))
+	}
+	return f
+}
+
+// worseThan reports whether f describes more drift than other, ranking by
+// changed source files first — that is what actually invalidates a doc — and
+// falling back to commit count when the file counts tie.
+func (f Freshness) worseThan(other Freshness) bool {
+	if f.Files != other.Files {
+		return f.Files > other.Files
+	}
+	return f.Commits > other.Commits
 }
 
 // gitOut runs one git command in dir and returns its trimmed stdout. The bool is
