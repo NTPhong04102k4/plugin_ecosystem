@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ghmsoft/skillrunner/internal/skill"
@@ -139,8 +140,8 @@ func main() {
 		} else {
 			fmt.Printf("Stack:   %s (%s)\n", d.Stack, d.Reason)
 		}
-		reportCache(detectDir, "Profile", "docs/project-profile.md", "run `learn-project` to build it")
-		reportCache(detectDir, "Registry", "docs/module-registry.md", "will be created as features land")
+		reportCache(detectDir, "Profile", "docs/project-profile.md", "run `learn-project` to build it", "learn-project")
+		reportCache(detectDir, "Registry", "docs/module-registry.md", "will be created as features land", "update-module-registry")
 		if l, err := skill.LoadLedger(detectDir); err == nil {
 			fmt.Println(l.StatusLine())
 		}
@@ -369,17 +370,54 @@ func projectLabel(dir string) string {
 }
 
 // reportCache prints whether a cached knowledge file exists, with a hint if not.
-func reportCache(dir, label, rel, hint string) {
-	fmt.Print(cacheLine(dir, label, rel, hint))
+func reportCache(dir, label, rel, hint, refresh string) {
+	fmt.Print(cacheLine(dir, label, rel, hint, refresh))
 }
 
 // cacheLine is reportCache as a string, so both the CLI and the MCP server can
 // render identical cache status without one printing and the other capturing.
-func cacheLine(dir, label, rel, hint string) string {
-	if _, err := os.Stat(filepath.Join(dir, rel)); err == nil {
-		return fmt.Sprintf("%-8s cached (%s) — reuse it, do not re-scan source\n", label+":", rel)
+//
+// A cached doc is also checked for drift: refresh names the skill that rebuilds
+// it, so a stale line can say what to re-run.
+func cacheLine(dir, label, rel, hint, refresh string) string {
+	if _, err := os.Stat(filepath.Join(dir, rel)); err != nil {
+		return fmt.Sprintf("%-8s missing (%s) — %s\n", label+":", rel, hint)
 	}
-	return fmt.Sprintf("%-8s missing (%s) — %s\n", label+":", rel, hint)
+
+	// The label column is padded, so the continuation line indents by the padded
+	// width — long labels ("Registry:") stay aligned with short ones ("Profile:").
+	prefix := fmt.Sprintf("%-8s ", label+":")
+
+	f := skill.CheckFreshness(dir, rel)
+	switch {
+	case !f.Known:
+		// Not a git repo, or the doc is not committed yet — no baseline to
+		// measure against, so report exactly what we did before staleness existed.
+		return fmt.Sprintf("%scached (%s) — reuse it, do not re-scan source\n", prefix, rel)
+	case !f.Stale():
+		return fmt.Sprintf("%scached (%s) — fresh at HEAD, reuse it, do not re-scan source\n", prefix, rel)
+	}
+
+	var drift string
+	if f.Files > 0 {
+		drift = fmt.Sprintf("%s, %s changed since it was written",
+			plural(f.Commits, "commit"), plural(f.Files, "source file"))
+		if f.Dirty > 0 {
+			drift += fmt.Sprintf(", plus %d uncommitted", f.Dirty)
+		}
+	} else {
+		drift = fmt.Sprintf("%s uncommitted in the working tree", plural(f.Dirty, "source file"))
+	}
+	return fmt.Sprintf("%sSTALE (%s) — %s\n%sreuse for orientation only; confirm files/symbols still exist, or ask the user to re-run `%s`\n",
+		prefix, rel, drift, strings.Repeat(" ", len(prefix)), refresh)
+}
+
+// plural renders "1 commit" / "3 commits" for the counts in a staleness line.
+func plural(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 // applyMark returns a status glyph for one apply-base result line.

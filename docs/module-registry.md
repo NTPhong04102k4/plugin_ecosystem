@@ -18,11 +18,12 @@ Template for a new entry:
 ## cli (`cmd/skillrunner`)
 - **Purpose:** command-line entrypoint; parses args and dispatches subcommands.
 - **Files:**
-  - `cmd/skillrunner/main.go` — subcommand dispatch, flags, pack loading/merging, `reportCache`.
+  - `cmd/skillrunner/main.go` — subcommand dispatch, flags, pack loading/merging, `reportCache`/`cacheLine`.
   - `cmd/skillrunner/starter.go` — embedded starter manifest for `init`.
+  - `cmd/skillrunner/status_test.go` — `cacheLine` rendering (missing/cached/fresh/STALE) + CLI-vs-MCP parity.
 - **Routes (subcommands):**
   - `detect` -> `skill.Detect`
-  - `status` -> `skill.Detect` + `reportCache` (profile/registry cache state)
+  - `status` -> `skill.Detect` + `reportCache` (profile/registry cache state + staleness via `skill.CheckFreshness`)
   - `list` -> `Manifest.List` (after pack merge)
   - `emit <skill>` -> `Manifest.Emit` (after pack merge)
   - `validate` -> `skill.Load` + `Manifest.Validate`
@@ -34,6 +35,7 @@ Template for a new entry:
   - `manifest.go` — `Manifest`/`Skill`/`Rules` types, `Load`, `Validate`, `Merge`, `isPackRule`.
   - `pack.go` — `Pack` type, `LoadPack`, `AvailablePacks`.
   - `detect.go` — `Detect` (file-signature stack detection).
+  - `freshness.go` — `CheckFreshness`/`Freshness` (git-derived staleness of a cached doc; no marker or state file).
   - `emit.go` — `Emit` (compose marching orders), `List`.
   - `jsonc.go` — JSON-with-`//`-comments reader (`decodeJSONC`).
 - **Routes:** n/a (library).
