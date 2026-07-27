@@ -29,7 +29,7 @@ the pack, never the skill.
 - JSON allows `//` line comments.
 
 ### Other commands
-- `skillrunner status` — show the stack + whether `docs/project-profile.md` / `docs/module-registry.md` are cached
+- `skillrunner status` — show the stack + whether `docs/project-profile.md` / `docs/module-registry.md` are cached, and whether a cached doc has gone `STALE` (git-derived: commits + source files changed since the doc was last committed)
 - `skillrunner validate` — check the manifest
 - `skillrunner init` — write a starter skill.json into a new project
 - `skillrunner bootstrap` — ensure the project's `CLAUDE.md` tells Claude to use `sr`. Run once per
@@ -46,6 +46,11 @@ and writes the profile. On later tasks the profile **exists** → reuse it and a
 components directly; do **not** re-scan the whole source. **Only rebuild it when the user explicitly
 asks to update** — never auto-refresh. Safety: confirm a specific file/symbol still exists before
 relying on the cached catalog.
+
+`sr status` also reports whether the profile has gone **`STALE`** — how many commits and source
+files landed since it was last committed. Stale does not mean "throw it away": keep using it for
+orientation, but treat every path/symbol as unverified, and **tell the user it is stale and let
+them decide** whether to re-run `learn-project`. The same applies to `docs/module-registry.md`.
 
 ## Feature delivery workflow (`deliver-feature`)
 
@@ -75,6 +80,8 @@ skill dispatcher on your PATH. It detects the stack and prints "marching orders"
 
 When a request matches a skill:
 1. `sr status` — stack + whether docs/project-profile.md and docs/module-registry.md are cached.
+   A cached doc marked `STALE` has fallen behind the source: still use it to orient, but confirm any
+   file/symbol still exists before relying on it, and ask the user before rebuilding it.
 2. `sr list` — skills with one-line descriptions; map the task to the right one.
 3. `sr emit <skill>` — print the marching orders, then READ and FOLLOW the "Rules you MUST follow" section.
 4. A skill tagged `[needs approval]` → only propose a plan/goal and STOP for the user; do not edit files first.

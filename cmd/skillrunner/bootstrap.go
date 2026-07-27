@@ -38,6 +38,8 @@ func bootstrapBlock(stack string) string {
 		"",
 		"When a request matches a skill:",
 		"1. " + bt + "sr status" + bt + " — stack + whether docs/project-profile.md and docs/module-registry.md are cached.",
+		"   A cached doc marked " + bt + "STALE" + bt + " has fallen behind the source: still use it to orient, but confirm any",
+		"   file/symbol still exists before relying on it, and ask the user before rebuilding it.",
 		"2. " + bt + "sr list" + bt + " — skills with one-line descriptions; map the task to the right one.",
 		"3. " + bt + "sr emit <skill>" + bt + " — print the marching orders, then READ and FOLLOW the \"Rules you MUST follow\" section.",
 		"4. A skill tagged " + bt + "[needs approval]" + bt + " → only propose a plan/goal and STOP for the user; do not edit files first.",
