@@ -34,7 +34,9 @@ func bootstrapBlock(stack string) string {
 		"",
 		"This project (stack: **" + stack + "**) is served by " + bt + "sr" + bt + " (aka " + bt + "skillrunner" + bt + "), a central",
 		"skill dispatcher on your PATH. It detects the stack and prints \"marching orders\"",
-		"(rules + steps) for YOU (Claude) to execute — it never reasons or edits files itself.",
+		"(rules + steps) for YOU (Claude) to execute — it never reasons and never rewrites your",
+		"source. " + bt + "emit" + bt + " only appends to " + bt + ".skillrunner/ledger.json" + bt + "; " + bt + "pull" + bt + "/" + bt + "fetch" + bt + "/" + bt + "apply-base" + bt + " write",
+		"generated files (types / markdown / base config). Nothing else in the repo is touched.",
 		"",
 		"When a request matches a skill:",
 		"1. " + bt + "sr status" + bt + " — stack + whether docs/project-profile.md and docs/module-registry.md are cached.",
@@ -46,6 +48,10 @@ func bootstrapBlock(stack string) string {
 		"5. First task in a project with no docs/project-profile.md → run " + bt + "learn-project" + bt + " before implementing.",
 		"",
 		"If a task clearly matches a skill, prefer " + bt + "sr emit <skill>" + bt + " over improvising.",
+		"",
+		"Beyond skills, two deterministic 0-token bridges — use them instead of reading raw",
+		"sources yourself: " + bt + "sr pull" + bt + " (OpenAPI → types + hooks + digest) and " + bt + "sr fetch" + bt,
+		"(Confluence / Google Sheet → clean markdown + digest).",
 		bootstrapEnd,
 	}
 	return strings.Join(lines, "\n")
