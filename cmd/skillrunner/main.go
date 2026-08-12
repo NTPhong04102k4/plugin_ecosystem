@@ -38,9 +38,18 @@ Usage:
   skillrunner init                     Write a starter skill.json in the current dir
   skillrunner bootstrap                Ensure the project's CLAUDE.md tells Claude to use sr
   skillrunner serve                    Run as an MCP server over stdio (exposes detect/list/emit/apply-base as tools)
+  skillrunner home                     Show which skill.json resolves, and via which rung
+  skillrunner home --set <dir>         Record the skill pool directory (survives moving between machines)
+  skillrunner home --shims             (Re)write the ` + "`sr`" + ` wrappers next to the installed binary
+
+Manifest resolution, in order (see ` + "`skillrunner home`" + `):
+  1. -f/--file <path>              explicit; never second-guessed
+  2. ./skill.json                  a project carrying its own pool
+  3. $SKILLRUNNER_HOME/skill.json  absolute path
+  4. ~/.skillrunner/home           pointer file written by ` + "`make install`" + `
 
 Flags:
-  -f, --file <path>   Manifest path (default: skill.json)
+  -f, --file <path>   Manifest path (default: resolved by the ladder above)
   -p, --pack <stack>  Force a stack pack (e.g. react, flutter). Default: auto-detect.
       --dir <path>    Project dir to detect against (default: manifest's dir)
       --force         (bootstrap) Write the project CLAUDE.md even if already covered
@@ -60,8 +69,11 @@ func main() {
 	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	var file, pack, dir string
 	var force bool
-	fs.StringVar(&file, "file", "skill.json", "manifest path")
-	fs.StringVar(&file, "f", "skill.json", "manifest path (shorthand)")
+	// Empty, not "skill.json": the default is resolved by resolveManifestPath
+	// below, which can only tell "the user asked for this file" from "nothing was
+	// given" if the unset value is distinguishable.
+	fs.StringVar(&file, "file", "", "manifest path (default: resolved, see `sr home`)")
+	fs.StringVar(&file, "f", "", "manifest path (shorthand)")
 	fs.StringVar(&pack, "pack", "", "force stack pack")
 	fs.StringVar(&pack, "p", "", "force stack pack (shorthand)")
 	fs.StringVar(&dir, "dir", "", "project dir to detect against")
@@ -90,6 +102,11 @@ func main() {
 	var fetchSession string
 	fs.IntVar(&uiPort, "port", 7777, "ui: localhost port")
 	fs.StringVar(&fetchSession, "session", "", "refresh: session name in this repo's ui.json")
+	// home-only flags
+	var homeSet string
+	var homeShims bool
+	fs.StringVar(&homeSet, "set", "", "home: record this skill pool directory in the pointer file")
+	fs.BoolVar(&homeShims, "shims", false, "home: (re)write the `sr` wrappers next to the installed binary")
 	// Go's flag package stops at the first positional, so flags placed AFTER the
 	// skill name would be ignored. Interleave parsing to accept flags anywhere.
 	rest := parseInterleaved(fs, os.Args[2:])
@@ -100,6 +117,26 @@ func main() {
 	detectDir := dir
 	if detectDir == "" {
 		detectDir = "."
+	}
+
+	// Resolve which manifest to load before dispatching, so the CLI and the MCP
+	// server (which is handed `file` further down) agree by construction.
+	// Two commands opt out: `init` WRITES a manifest rather than reading one, and
+	// `home` must still run when nothing resolves — the command that diagnoses a
+	// broken setup cannot be the one that dies of it.
+	switch cmd {
+	case "init":
+		if file == "" {
+			file = manifestName
+		}
+	case "home", "-h", "--help", "help":
+		// resolved lazily inside runHome
+	default:
+		resolved, _, err := resolveManifestPath(file, ".")
+		if err != nil {
+			fatal(err)
+		}
+		file = resolved
 	}
 	packDir := filepath.Dir(file)
 
@@ -306,6 +343,11 @@ func main() {
 		// Run as an MCP server over stdio. packDir is where packs/ live (next to
 		// the manifest); detectDir is the default project when a tool omits "dir".
 		if err := runMCPServer(file, detectDir, packDir); err != nil {
+			fatal(err)
+		}
+
+	case "home":
+		if err := runHome(homeSet, homeShims); err != nil {
 			fatal(err)
 		}
 
