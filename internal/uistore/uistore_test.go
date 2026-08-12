@@ -3,6 +3,7 @@ package uistore
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -21,13 +22,20 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// File perms must be 0600.
+	// File perms must be 0600 — ui.json holds Atlassian tokens.
+	//
+	// Windows has no Unix permission bits: os.Chmod there can only flip the
+	// read-only attribute, so a file written 0600 stats back as 0666. Asserting
+	// it would fail for a platform limitation the code cannot fix (real
+	// restriction would need NTFS ACLs). The rest of the round-trip still runs.
 	info, err := os.Stat(Path(repo))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Errorf("ui.json perm = %o, want 600", perm)
+	if runtime.GOOS != "windows" {
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Errorf("ui.json perm = %o, want 600", perm)
+		}
 	}
 
 	got, err := Load(repo)
