@@ -23,9 +23,13 @@ Template for a new entry:
 - **Purpose:** command-line entrypoint; parses flags and dispatches every subcommand.
 - **Files:**
   - `cmd/skillrunner/main.go` — subcommand dispatch, flags, pack loading/merging, `reportCache`/`cacheLine`, `plural`.
+  - `cmd/skillrunner/manifestpath.go` — `resolveManifestPath`: the fixed ladder that locates the central `skill.json` (`-f` > `./skill.json` > `$SKILLRUNNER_HOME` > `~/.skillrunner/home`), plus `pointerPath`/`pointerHome` and the error that names every rung. Runs once in `main` before dispatch, so the CLI and the MCP server agree by construction.
+  - `cmd/skillrunner/home.go` — `runHome` (`sr home`): `reportHome` diagnosis, `writePointer` (`--set`), `writeShims`/`shimFiles` (`--shims`, two files on Windows: `sr.cmd` + extensionless `sr` for Git Bash).
   - `cmd/skillrunner/bootstrap.go` — `bootstrapBlock` (the managed CLAUDE.md text) + `ensureBootstrap` cascade (refresh in place / covered globally / append).
   - `cmd/skillrunner/starter.go` — embedded starter manifest for `init`.
   - `cmd/skillrunner/status_test.go` — `cacheLine` rendering (missing/cached/fresh/STALE) + CLI-vs-MCP parity.
+  - `cmd/skillrunner/manifestpath_test.go` — ladder precedence, fall-through on a stale rung, and the foreign-directory regression.
+  - `cmd/skillrunner/home_test.go` — per-platform shim contents, quoting, and pointer round-trip.
 - **Routes (subcommands):**
   - `detect` -> `skill.Detect`
   - `status` -> `skill.Detect` + `reportCache` (profile/registry cache state + staleness via `skill.CheckFreshness`) + `skill.Ledger.StatusLine`
@@ -39,9 +43,10 @@ Template for a new entry:
   - `refresh --session <s>` -> `uiserver.RunSession`
   - `ledger` -> `skill.Ledger.Summary`
   - `validate` -> `skill.Load` + `Manifest.Validate`
-  - `init` -> `writeStarter`
+  - `init` -> `writeStarter` (opts out of the manifest ladder: it *writes* a manifest)
   - `bootstrap` -> `ensureBootstrap`
-  - `serve` -> `runMCPServer`
+  - `serve` -> `runMCPServer` (receives the already-resolved manifest path)
+  - `home` -> `runHome` (`--set` writes the pointer, `--shims` writes the `sr` wrappers; resolves lazily so it still reports when nothing resolves)
 
 ## mcp server (`cmd/skillrunner/mcp.go`)
 - **Purpose:** run the pool as an MCP server over stdio (JSON-RPC 2.0). `sr` is the *server*;
