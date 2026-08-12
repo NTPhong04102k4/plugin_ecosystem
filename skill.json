@@ -229,8 +229,12 @@
       "description": "Build the data layer for an API call following the stack's architecture. Use when the user wants an endpoint integrated — models/DTOs + service/repository/provider + wiring — but NOT UI. Keywords: data layer, API call, integrate endpoint, model, DTO, service, repository, provider, fetch data.",
       "goal": "Types/models + service/provider + wiring, per the pack's templates.",
       "appliesRules": ["working-policy", "project-profile", "technical", "architecture", "conventions", "templates", "library-docs"],
-      "inputs": ["Endpoint, method, request/response shape (ask if unknown)"],
+      "inputs": [
+        "Endpoint, method, request/response shape (ask if unknown)",
+        "Optional but preferred: an OpenAPI/Swagger source (a file, or an authswagger URL `<base>/openapi.json?env=&spec=`) + the OpenAPI tag — this lets `sr pull` generate the types instead of hand-writing them"
+      ],
       "instructions": [
+        "If the endpoint comes from an OpenAPI/Swagger source, run `sr pull --from <spec-url|file> --tag <Tag>` FIRST (0-token deterministic bridge): it writes types + a service/hook skeleton into `src/api/<tag>/` and prints a compact digest. Read the DIGEST, never the raw spec, and build on the generated files — do NOT hand-write types the bridge already produced. If the stack's pack ships no codegen templates the command fails loudly; fall back to the pack template below.",
         "Confirm the endpoint contract; ask for missing request/response shapes.",
         "Copy the pack's data-layer template (do not invent a new structure).",
         "Generate the model/types (null-defensive) and the service/provider.",
