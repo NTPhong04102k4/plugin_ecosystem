@@ -310,8 +310,8 @@ func (s *mcpServer) statusText(dir string) string {
 	} else {
 		b = fmt.Appendf(b, "Stack:   %s (%s)\n", d.Stack, d.Reason)
 	}
-	b = append(b, cacheLine(dir, "Profile", "docs/project-profile.md", "run learn-project to build it")...)
-	b = append(b, cacheLine(dir, "Registry", "docs/module-registry.md", "will be created as features land")...)
+	b = append(b, cacheLine(dir, "Profile", "docs/project-profile.md", "run learn-project to build it", "learn-project")...)
+	b = append(b, cacheLine(dir, "Registry", "docs/module-registry.md", "will be created as features land", "update-module-registry")...)
 	if l, err := skill.LoadLedger(dir); err == nil {
 		b = fmt.Appendf(b, "%s\n", l.StatusLine())
 	}

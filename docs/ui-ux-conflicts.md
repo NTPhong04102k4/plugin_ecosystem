@@ -36,7 +36,32 @@ Không có bên nào "mặc định thắng". Đề xuất chỉ là gợi ý đ
 
 ## 3. Danh mục loại xung đột
 
-Bám sát rule hiện có trong `packs/react.json`, `packs/flutter.json`, `packs/rn.json`.
+Hai trục, **dùng cùng lúc**, ký hiệu không đụng nhau:
+
+- **§3.0 — ma trận cặp nguồn (`P1–P8`):** *đối chiếu cái gì với cái gì*. Dùng để **quét đủ**, không sót cặp.
+- **§3.1–3.6 — danh mục rule (`A1–F4`):** *xung đột cụ thể nào*, neo vào rule thật trong
+  `packs/react.json`, `packs/flutter.json`, `packs/rn.json`.
+
+Một phát hiện thường mang **cả hai mã**, vd `P3/D1` = ảnh mockup ↔ UI/UX rules, vi phạm "không
+hardcode màu".
+
+### 3.0. Ma trận cặp nguồn (`P1–P8`)
+
+Quét lần lượt từng cặp; cặp nào thiếu nguồn thì ghi rõ **giảm độ phủ**, không đoán.
+
+| # | Cặp nguồn | Dấu hiệu mâu thuẫn cần dò |
+|---|-----------|---------------------------|
+| P1 | Test case ↔ Spec/AC | Test kỳ vọng **X**, AC nói **Y**; test cho tính năng đã đổi scope/đóng; test tham chiếu field/màn/endpoint không có trong spec |
+| P2 | Test case ↔ UI/UX rules | Bước test vi phạm rule (số bước, vị trí nút, luồng); wording/label khác chuẩn |
+| P3 | Spec / ảnh mockup ↔ UI/UX rules | Bố cục, màu, spacing, số bước, accessibility; thiếu trạng thái lỗi/empty/loading |
+| P4 | Ảnh mockup ↔ Spec | Ảnh thể hiện thành phần/luồng khác mô tả chữ; ảnh có thứ spec không nhắc (hoặc ngược lại) |
+| P5 | Spec / ảnh ↔ Components + thư viện | Đòi component chưa tồn tại; behavior lib không hỗ trợ; sai props/variant; vẽ lại thứ đã có (→ §3.6) |
+| P6 | Components ↔ UI/UX rules | Dùng component sai variant/màu ngoài hệ thống; hai lib trùng vai trò |
+| P7 | Nội bộ bộ test case | Trùng lặp (cùng mục tiêu khác id); hai test mâu thuẫn expected cho cùng input; thiếu precondition/expected |
+| P8 | Jira ↔ Confluence | Trạng thái/scope lệch; AC trong Jira khác mô tả Confluence |
+
+> **Coverage gap** (spec/AC có mục mà không test case nào phủ) là phát hiện hợp lệ ở P1, và
+> ở P3/P6 khi rule bắt buộc một trục mà spec bỏ sót (§3.5).
 
 ### 3.1. Tương tác & phản hồi
 
@@ -94,23 +119,58 @@ Mỗi xung đột gắn 2 trục để người quyết ưu tiên đúng:
 
 - **Severity:** 🔴 High (sai chức năng / vi phạm rule bắt buộc / test sẽ fail) · 🟠 Medium (lệch
   đáng kể nhưng không chặn: coverage gap, wording, variant) · 🟡 Low (khác biệt nhỏ / có thể chủ ý).
-- **Confidence:** Chắc (trích dẫn rõ 2 bên) · Vừa (gián tiếp, cần xác nhận ngữ cảnh) · Thấp (thiếu
-  dữ liệu / ảnh mờ → ghi "insufficient evidence").
+- **Confidence:** High (trích dẫn rõ 2 bên, không mơ hồ) · Medium (gián tiếp, cần xác nhận ngữ
+  cảnh) · Low (thiếu dữ liệu / ảnh mờ → ghi "insufficient evidence", **không** thổi phồng).
 - **Không** đẩy severity lên khi confidence thấp. Sắp xếp báo cáo High→Low, cùng mức thì confidence cao trước.
 
-## 4. Mẫu ghi nhận một xung đột (dùng khi STOP báo người quyết)
+## 4. Mẫu báo cáo (dùng khi STOP báo người quyết)
+
+Đây là **mẫu duy nhất** cho mọi đường chạy `check-conflicts` (CLI qua `sr`, hay UI của MCP Studio).
+
+### 4.1. Khung báo cáo
+
+```markdown
+# Báo cáo xung đột — <ngày> (READ-ONLY, không ghi/không push)
+
+## 0. Nguồn đã đọc / thiếu
+- ✅ Đã đọc: <ảnh, CSV/GSheet, Confluence/MD, rules, components/libs>
+- ⚠️ Thiếu: <nguồn không có / không đọc được> → giảm độ phủ ở cặp <P…>.
+
+## 1. Tổng quan
+- Tổng xung đột: **N** (🔴 <a> · 🟠 <b> · 🟡 <c>)
+- Điểm nóng: <cụm vấn đề lớn nhất, 1–2 dòng>
+
+## 2. Bảng xung đột (để người quyết chọn)
+
+| # | Mã | Severity | Confidence | Nguồn A | Nguồn B | Mô tả mâu thuẫn |
+|---|----|----------|-----------|---------|---------|-----------------|
+| 1 | P5/F1 | 🔴 High | High | mockup: nút "Xuất PDF" | components: chưa có `ExportButton` | Thiết kế cần component chưa tồn tại |
+| 2 | P1 | 🟠 Medium | Medium | `TC-014` (ô B14) | `ABC-123` AC#2 | Test 3 bước, AC nói 2 bước |
+
+## 3. Chi tiết + phương án (§4.2 cho từng dòng)
+
+## 4. Ghi chú
+- Chỉ **phát hiện + đề xuất**; không áp dụng gì lên Jira/Confluence/code.
+- Sau khi người quyết chọn, có thể xuất **draft** (text/CSV) để **họ tự** áp dụng.
+```
+
+### 4.2. Khối chi tiết một xung đột
 
 ```
-### Xung đột #<n> — <tiêu đề ngắn>
-- Loại: <mã ở §3, vd A1 / D1 / F1>
-- Severity/Confidence: <🔴/🟠/🟡> / <Chắc/Vừa/Thấp>   (§3.7)
-- Nguồn spec: <link Confluence / mã testcase / ô Excel / vùng ảnh>
-- Rule UI/UX: <trích rule từ pack + tên pack>
-- Spec/testcase yêu cầu: <trích nguyên văn>
+### #<n> — <tiêu đề ngắn>  ·  <mã P… và/hoặc A1–F4> · <🔴/🟠/🟡> · Confidence <High/Medium/Low>
+- Nguồn A — <ref chính xác>: "<trích nguyên văn>"
+- Nguồn B — <ref chính xác>: "<trích nguyên văn / bằng chứng>"
+- Rule UI/UX (nếu có): <trích rule từ pack + tên pack>
+- Mâu thuẫn: <giải thích 1–2 câu>
 - Ảnh hưởng: <màn hình/flow nào>
-- Đề xuất: <phương án + lý do>
-- Cần người quyết: [ ] theo rule  [ ] theo spec  [ ] phương án khác: ____
+- Phương án cho người quyết:
+  - (a) <phương án 1 — ưu/nhược>
+  - (b) <phương án 2 — ưu/nhược>
+  - (c) Bỏ qua / chủ ý
+- Người quyết chọn: ☐ a  ☐ b  ☐ c  ☐ khác: ____
 ```
+
+Không bên nào "mặc định thắng" (§1); đề xuất chỉ để quyết nhanh.
 
 ## 5. Liên quan
 
@@ -118,5 +178,8 @@ Mỗi xung đột gắn 2 trục để người quyết ưu tiên đúng:
 - Skill đọc spec: `spec-from-source` (Confluence/OpenAPI/authswagger) → xem `skill.json`.
 - **Skill dò xung đột: `check-conflicts`** — đối chiếu test case (CSV/Google Sheet) + spec
   (Confluence/MD) + ảnh mockup + components/thư viện với rule UI/UX, xuất báo cáo theo §4 (read-only,
-  người quyết). Dùng taxonomy §3 làm bộ dò.
+  người quyết). Quét theo ma trận §3.0, phân loại theo §3.1–3.6.
+- **File này là nguồn duy nhất** của taxonomy + rubric + mẫu báo cáo cho `check-conflicts`.
+  MCP Studio (`mcp-client/skills/check-conflicts/SKILL.md`) chỉ giữ phần input/entry-point riêng
+  của nó và **trỏ về đây** — không chép lại, để hai bên không lệch nhau.
 - Quy trình dùng: khi `deliver-feature`/sinh testcase gặp mâu thuẫn, áp §1 (STOP + liệt kê §4).

@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ghmsoft/skillrunner/internal/skill"
@@ -37,9 +38,18 @@ Usage:
   skillrunner init                     Write a starter skill.json in the current dir
   skillrunner bootstrap                Ensure the project's CLAUDE.md tells Claude to use sr
   skillrunner serve                    Run as an MCP server over stdio (exposes detect/list/emit/apply-base as tools)
+  skillrunner home                     Show which skill.json resolves, and via which rung
+  skillrunner home --set <dir>         Record the skill pool directory (survives moving between machines)
+  skillrunner home --shims             (Re)write the ` + "`sr`" + ` wrappers next to the installed binary
+
+Manifest resolution, in order (see ` + "`skillrunner home`" + `):
+  1. -f/--file <path>              explicit; never second-guessed
+  2. ./skill.json                  a project carrying its own pool
+  3. $SKILLRUNNER_HOME/skill.json  absolute path
+  4. ~/.skillrunner/home           pointer file written by ` + "`make install`" + `
 
 Flags:
-  -f, --file <path>   Manifest path (default: skill.json)
+  -f, --file <path>   Manifest path (default: resolved by the ladder above)
   -p, --pack <stack>  Force a stack pack (e.g. react, flutter). Default: auto-detect.
       --dir <path>    Project dir to detect against (default: manifest's dir)
       --force         (bootstrap) Write the project CLAUDE.md even if already covered
@@ -59,8 +69,11 @@ func main() {
 	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	var file, pack, dir string
 	var force bool
-	fs.StringVar(&file, "file", "skill.json", "manifest path")
-	fs.StringVar(&file, "f", "skill.json", "manifest path (shorthand)")
+	// Empty, not "skill.json": the default is resolved by resolveManifestPath
+	// below, which can only tell "the user asked for this file" from "nothing was
+	// given" if the unset value is distinguishable.
+	fs.StringVar(&file, "file", "", "manifest path (default: resolved, see `sr home`)")
+	fs.StringVar(&file, "f", "", "manifest path (shorthand)")
 	fs.StringVar(&pack, "pack", "", "force stack pack")
 	fs.StringVar(&pack, "p", "", "force stack pack (shorthand)")
 	fs.StringVar(&dir, "dir", "", "project dir to detect against")
@@ -89,6 +102,11 @@ func main() {
 	var fetchSession string
 	fs.IntVar(&uiPort, "port", 7777, "ui: localhost port")
 	fs.StringVar(&fetchSession, "session", "", "refresh: session name in this repo's ui.json")
+	// home-only flags
+	var homeSet string
+	var homeShims bool
+	fs.StringVar(&homeSet, "set", "", "home: record this skill pool directory in the pointer file")
+	fs.BoolVar(&homeShims, "shims", false, "home: (re)write the `sr` wrappers next to the installed binary")
 	// Go's flag package stops at the first positional, so flags placed AFTER the
 	// skill name would be ignored. Interleave parsing to accept flags anywhere.
 	rest := parseInterleaved(fs, os.Args[2:])
@@ -99,6 +117,26 @@ func main() {
 	detectDir := dir
 	if detectDir == "" {
 		detectDir = "."
+	}
+
+	// Resolve which manifest to load before dispatching, so the CLI and the MCP
+	// server (which is handed `file` further down) agree by construction.
+	// Two commands opt out: `init` WRITES a manifest rather than reading one, and
+	// `home` must still run when nothing resolves — the command that diagnoses a
+	// broken setup cannot be the one that dies of it.
+	switch cmd {
+	case "init":
+		if file == "" {
+			file = manifestName
+		}
+	case "home", "-h", "--help", "help":
+		// resolved lazily inside runHome
+	default:
+		resolved, _, err := resolveManifestPath(file, ".")
+		if err != nil {
+			fatal(err)
+		}
+		file = resolved
 	}
 	packDir := filepath.Dir(file)
 
@@ -139,8 +177,8 @@ func main() {
 		} else {
 			fmt.Printf("Stack:   %s (%s)\n", d.Stack, d.Reason)
 		}
-		reportCache(detectDir, "Profile", "docs/project-profile.md", "run `learn-project` to build it")
-		reportCache(detectDir, "Registry", "docs/module-registry.md", "will be created as features land")
+		reportCache(detectDir, "Profile", "docs/project-profile.md", "run `learn-project` to build it", "learn-project")
+		reportCache(detectDir, "Registry", "docs/module-registry.md", "will be created as features land", "update-module-registry")
 		if l, err := skill.LoadLedger(detectDir); err == nil {
 			fmt.Println(l.StatusLine())
 		}
@@ -308,6 +346,11 @@ func main() {
 			fatal(err)
 		}
 
+	case "home":
+		if err := runHome(homeSet, homeShims); err != nil {
+			fatal(err)
+		}
+
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 
@@ -369,17 +412,62 @@ func projectLabel(dir string) string {
 }
 
 // reportCache prints whether a cached knowledge file exists, with a hint if not.
-func reportCache(dir, label, rel, hint string) {
-	fmt.Print(cacheLine(dir, label, rel, hint))
+func reportCache(dir, label, rel, hint, refresh string) {
+	fmt.Print(cacheLine(dir, label, rel, hint, refresh))
 }
 
 // cacheLine is reportCache as a string, so both the CLI and the MCP server can
 // render identical cache status without one printing and the other capturing.
-func cacheLine(dir, label, rel, hint string) string {
-	if _, err := os.Stat(filepath.Join(dir, rel)); err == nil {
-		return fmt.Sprintf("%-8s cached (%s) — reuse it, do not re-scan source\n", label+":", rel)
+//
+// A cached doc is also checked for drift: refresh names the skill that rebuilds
+// it, so a stale line can say what to re-run.
+func cacheLine(dir, label, rel, hint, refresh string) string {
+	if _, err := os.Stat(filepath.Join(dir, rel)); err != nil {
+		return fmt.Sprintf("%-8s missing (%s) — %s\n", label+":", rel, hint)
 	}
-	return fmt.Sprintf("%-8s missing (%s) — %s\n", label+":", rel, hint)
+
+	// The label column is padded, so the continuation line indents by the padded
+	// width — long labels ("Registry:") stay aligned with short ones ("Profile:").
+	prefix := fmt.Sprintf("%-8s ", label+":")
+
+	// refresh also names the skill that BUILDS this doc, so the ledger can say
+	// when it was last actually built — a truer baseline than the doc's own
+	// last commit, which a typo fix would reset.
+	build := ""
+	if l, err := skill.LoadLedger(dir); err == nil {
+		build = l.BuildCommit(refresh)
+	}
+
+	f := skill.CheckFreshness(dir, rel, build)
+	switch {
+	case !f.Known:
+		// Not a git repo, or the doc is not committed yet — no baseline to
+		// measure against, so report exactly what we did before staleness existed.
+		return fmt.Sprintf("%scached (%s) — reuse it, do not re-scan source\n", prefix, rel)
+	case !f.Stale():
+		return fmt.Sprintf("%scached (%s) — fresh at HEAD, reuse it, do not re-scan source\n", prefix, rel)
+	}
+
+	var drift string
+	if f.Files > 0 {
+		drift = fmt.Sprintf("%s, %s changed since it was written",
+			plural(f.Commits, "commit"), plural(f.Files, "source file"))
+		if f.Dirty > 0 {
+			drift += fmt.Sprintf(", plus %d uncommitted", f.Dirty)
+		}
+	} else {
+		drift = fmt.Sprintf("%s uncommitted in the working tree", plural(f.Dirty, "source file"))
+	}
+	return fmt.Sprintf("%sSTALE (%s) — %s\n%sreuse for orientation only; confirm files/symbols still exist, or ask the user to re-run `%s`\n",
+		prefix, rel, drift, strings.Repeat(" ", len(prefix)), refresh)
+}
+
+// plural renders "1 commit" / "3 commits" for the counts in a staleness line.
+func plural(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 // applyMark returns a status glyph for one apply-base result line.

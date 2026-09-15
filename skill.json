@@ -31,12 +31,14 @@
       "Each project keeps a module registry at `docs/module-registry.md`.",
       "For every module, record: Purpose (what it develops), Files (key files + their role), Routes (route path -> screen/handler).",
       "After delivering a feature, update the registry so future work can look up which files/routes belong to which module.",
-      "Keep entries stable and sorted; do not rewrite unrelated sections."
+      "Keep entries stable and sorted; do not rewrite unrelated sections.",
+      "If `skillrunner status` marks the registry STALE, its Files/Routes may name things that have since moved: confirm a path before trusting it, and bring the entries you touch back in line."
     ],
     "project-profile": [
       "The project's learned knowledge lives in `docs/project-profile.md`: framework + language (with versions), architecture/layers and how they connect, key flows (data/auth/navigation), important config/variables/tokens, and a catalog of reusable components/widgets WITH file paths.",
       "FIRST task in a project (profile missing): run `learn-project` to build it before implementing. Check with `skillrunner status`.",
       "If the profile EXISTS: reuse it — apply the cataloged components/patterns directly; do NOT re-scan the whole source to rediscover them.",
+      "If `skillrunner status` marks the profile STALE, the source moved on since it was written: still reuse it to orient, but treat EVERY path/symbol in it as unverified, and tell the user it is stale so they can decide whether to refresh.",
       "Rebuild the profile ONLY when the user explicitly asks to update it (re-run `learn-project`); never auto-refresh.",
       "Safety: trust the profile for orientation, but cheaply confirm a specific file/symbol still exists before relying on it."
     ]
@@ -101,10 +103,10 @@
       "instructions": [
         "For a Confluence page or Google Sheet, run `sr fetch --from <url|alias>` FIRST (0-token deterministic bridge → docs/specs/*.md); fall back to Atlassian MCP READ tools only if unavailable. READ-ONLY — never write anything back to Jira/Confluence.",
         "Read every provided source: test cases (CSV / fetched sheet), the spec, any images (vision), and the applied components/libraries. If a source is missing, note the reduced coverage — do not guess.",
-        "Load the UI/UX rules to compare against: the `design-system` + `conventions` pack rules for the detected stack, plus docs/ui-ux-conflicts.md for the known conflict taxonomy (A1–E3).",
-        "Cross-check each source pair (test↔spec/AC, test/spec↔UI-UX rules, image↔spec, spec/image↔components/libraries, internal Excel duplicates, coverage gaps). Ground every finding in a verbatim quote from BOTH sides; if two supplied sources of the same thing (e.g. CSV vs Sheet) disagree, that is itself a conflict.",
+        "Load the UI/UX rules to compare against: the `design-system` + `conventions` pack rules for the detected stack, plus `$SKILLRUNNER_HOME/docs/ui-ux-conflicts.md` (the skillrunner repo — NOT the target project's docs/) for the conflict taxonomy: §3.0 source-pair matrix P1–P8 and §3.1–3.6 rule catalog A1–F4.",
+        "Walk EVERY source pair in the §3.0 matrix (P1–P8): test↔spec/AC, test↔UI-UX rules, spec/image↔UI-UX rules, image↔spec, spec/image↔components/libraries, components↔rules, internal test-case duplicates, Jira↔Confluence. Ground every finding in a verbatim quote from BOTH sides; if two supplied sources of the same thing (e.g. CSV vs Sheet) disagree, that is itself a conflict (P7/F4).",
         "Rate each conflict by severity + confidence; do NOT inflate severity when evidence is weak — mark 'insufficient evidence' instead.",
-        "Report using the template in docs/ui-ux-conflicts.md §4: per conflict — type, sources, quotes, impact, a proposed default option, and the decision checkbox. Do NOT auto-decide; no side 'wins' by default.",
+        "Report using the template in `$SKILLRUNNER_HOME/docs/ui-ux-conflicts.md` §4 — §4.1 report frame (sources read/missing, overview, conflict table) + §4.2 per-conflict block (codes, quotes from both sides, impact, 2-3 options, decision checkbox). Rate per §3.7. Do NOT auto-decide; no side 'wins' by default.",
         "Present the report and STOP for the user to choose. Apply nothing; write nothing to Jira/Confluence/code. If the user later picks resolutions, produce a draft they apply themselves."
       ],
       "outputs": ["A conflict report grouped by severity — no changes to any source, code, Jira, or Confluence"]
@@ -227,8 +229,12 @@
       "description": "Build the data layer for an API call following the stack's architecture. Use when the user wants an endpoint integrated — models/DTOs + service/repository/provider + wiring — but NOT UI. Keywords: data layer, API call, integrate endpoint, model, DTO, service, repository, provider, fetch data.",
       "goal": "Types/models + service/provider + wiring, per the pack's templates.",
       "appliesRules": ["working-policy", "project-profile", "technical", "architecture", "conventions", "templates", "library-docs"],
-      "inputs": ["Endpoint, method, request/response shape (ask if unknown)"],
+      "inputs": [
+        "Endpoint, method, request/response shape (ask if unknown)",
+        "Optional but preferred: an OpenAPI/Swagger source (a file, or an authswagger URL `<base>/openapi.json?env=&spec=`) + the OpenAPI tag — this lets `sr pull` generate the types instead of hand-writing them"
+      ],
       "instructions": [
+        "If the endpoint comes from an OpenAPI/Swagger source, run `sr pull --from <spec-url|file> --tag <Tag>` FIRST (0-token deterministic bridge): it writes types + a service/hook skeleton into `src/api/<tag>/` and prints a compact digest. Read the DIGEST, never the raw spec, and build on the generated files — do NOT hand-write types the bridge already produced. If the stack's pack ships no codegen templates the command fails loudly; fall back to the pack template below.",
         "Confirm the endpoint contract; ask for missing request/response shapes.",
         "Copy the pack's data-layer template (do not invent a new structure).",
         "Generate the model/types (null-defensive) and the service/provider.",

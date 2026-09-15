@@ -72,7 +72,27 @@ func (m *Manifest) Emit(name string) (string, error) {
 		b.WriteString("This skill produces a PLAN/PROPOSAL only. Present the result to the user and STOP for their decision before writing or changing any project file.\n\n")
 	}
 
-	return b.String(), nil
+	return m.resolveHome(b.String()), nil
+}
+
+// homePlaceholder is what a skill writes when it needs to reference a file that
+// lives in the skill pool itself (e.g. docs/ui-ux-conflicts.md) rather than in
+// the target project.
+const homePlaceholder = "$SKILLRUNNER_HOME"
+
+// resolveHome expands the placeholder to the manifest's own directory. The `sr`
+// shell wrapper exports a variable of the same name, but a subprocess — the MCP
+// server, cron, or a direct binary call — never sees it, which used to leave
+// Claude with an unresolvable path. Substituting here fixes every entry point at
+// once and stays deterministic: same manifest => same absolute path.
+//
+// If Load could not determine the directory, the text is left exactly as
+// written rather than silently resolving to "".
+func (m *Manifest) resolveHome(s string) string {
+	if m.home == "" {
+		return s
+	}
+	return strings.ReplaceAll(s, homePlaceholder, m.home)
 }
 
 // EmitAll composes the marching orders for every skill, in stable sorted order,

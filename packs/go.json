@@ -47,7 +47,15 @@
   // Base config files copied into a project by `sr apply-base --stack go`.
   // `from` is relative to packs/assets/ ; `to` is relative to the project root.
   "assets": [
-    { "from": "go/.golangci.yml", "to": ".golangci.yml", "desc": "golangci-lint config (generated default)" },
-    { "from": "go/.editorconfig", "to": ".editorconfig", "desc": "editor defaults (tabs for Go)" }
+    {
+      "from": "go/.golangci.yml",
+      "to": ".golangci.yml",
+      "desc": "golangci-lint config (generated default)"
+    },
+    {
+      "from": "go/.editorconfig",
+      "to": ".editorconfig",
+      "desc": "editor defaults (tabs for Go)"
+    }
   ]
 }

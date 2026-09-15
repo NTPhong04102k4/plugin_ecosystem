@@ -29,11 +29,17 @@ type Ledger struct {
 }
 
 // LedgerRecord tracks one skill's emit history within a project.
+//
+// LastCommit is HEAD at the moment of the most recent emit. For a skill that
+// builds a cached doc (learn-project, update-module-registry) that is the real
+// "built at" marker, which the doc's own commit history cannot supply — see
+// Ledger.BuildCommit.
 type LedgerRecord struct {
 	Stack        string `json:"stack,omitempty"`
 	Count        int    `json:"count"`
 	FirstEmitted string `json:"firstEmitted,omitempty"`
 	LastEmitted  string `json:"lastEmitted,omitempty"`
+	LastCommit   string `json:"lastCommit,omitempty"`
 }
 
 // ledgerPath returns the ledger file path for a project directory.
@@ -102,7 +108,23 @@ func RecordEmit(dir, project, name, stack string, now time.Time) error {
 	if stack != "" {
 		rec.Stack = stack
 	}
+	// Best-effort: outside a repo (or without git) there is simply no commit to
+	// record, and freshness falls back to the doc's own history.
+	if head, ok := gitOut(dir, "rev-parse", "HEAD"); ok {
+		rec.LastCommit = head
+	}
 	return l.save(dir)
+}
+
+// BuildCommit returns HEAD as it stood when skill was last emitted here, or ""
+// if the skill was never emitted, predates commit recording, or ran outside a
+// repo. Callers treat "" as "no better baseline than the file's own history".
+func (l *Ledger) BuildCommit(skill string) string {
+	rec := l.Skills[skill]
+	if rec == nil {
+		return ""
+	}
+	return rec.LastCommit
 }
 
 // names returns the recorded skill names sorted for stable output.

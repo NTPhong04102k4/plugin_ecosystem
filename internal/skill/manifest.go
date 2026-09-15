@@ -10,6 +10,7 @@ package skill
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 )
 
@@ -26,6 +27,13 @@ type Manifest struct {
 	// than by this manifest. Skills may reference them in AppliesRules without
 	// tripping validation; they resolve once a pack is merged.
 	PackRules []string `json:"packRules,omitempty"`
+
+	// home is the absolute directory holding this manifest (and packs/). Load
+	// fills it in; Emit substitutes it for the $SKILLRUNNER_HOME placeholder so a
+	// skill can point at a file inside the skill pool itself without depending on
+	// the `sr` shell wrapper exporting that variable — a subprocess (MCP server,
+	// cron, a direct call to the binary) never inherits it.
+	home string
 }
 
 // isPackRule reports whether a group name is declared as pack-provided.
@@ -85,6 +93,11 @@ func Load(path string) (*Manifest, error) {
 	}
 	if err := m.Validate(); err != nil {
 		return nil, err
+	}
+	// Remember where the pool lives so emit can resolve $SKILLRUNNER_HOME. A
+	// failure here is not fatal: the placeholder is simply left as written.
+	if abs, err := filepath.Abs(filepath.Dir(path)); err == nil {
+		m.home = abs
 	}
 	return &m, nil
 }
